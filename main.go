@@ -26,9 +26,6 @@ func validateEnvParams() error {
 	if os.Getenv(telegramChannelsLabel) == "" {
 		return errors.New(fmt.Sprintf(notDefinedErrorMessage, telegramChannelsLabel))
 	}
-	if os.Getenv(telegramAdminsLabel) == "" {
-		return errors.New(fmt.Sprintf(notDefinedErrorMessage, telegramAdminsLabel))
-	}
 	if os.Getenv(telegramCommandsLabel) == "" {
 		return errors.New(fmt.Sprintf(notDefinedErrorMessage, telegramCommandsLabel))
 	}
