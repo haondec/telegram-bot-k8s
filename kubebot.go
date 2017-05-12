@@ -3,7 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
-	"time"
+//	"time"
 
 	"github.com/go-chat-bot/bot"
 )
@@ -129,13 +129,13 @@ func validateFlags(arguments ...string) error {
 }
 
 func kubectl(command *bot.Cmd) (msg string, err error) {
-	t := time.Now()
-	time := t.Format(time.RFC3339)
+//	t := time.Now()
+//	time := t.Format(time.RFC3339)
 
-	if err := validateFlags(command.Args...); err != nil {
-		fmt.Printf(forbiddenFlagMessage, time, command.Args)
-		return fmt.Sprintf(forbiddenFlagResponse), nil
-	}
+//	if err := validateFlags(command.Args...); err != nil {
+//		fmt.Printf(forbiddenFlagMessage, time, command.Args)
+//		return fmt.Sprintf(forbiddenFlagResponse), nil
+//	}
 
 	output := execute("kubectl", command.Args...)
 
