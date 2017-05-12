@@ -46,5 +46,5 @@ func main() {
 		commands: stringToMap(os.Getenv(telegramCommandsLabel), " "),
 	}
 
-	telegram.Run(kb.token)
+	telegram.Run(kb.token, false)
 }
