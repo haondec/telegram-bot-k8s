@@ -15,12 +15,12 @@ type Kubebot struct {
 }
 
 const (
-	forbiddenCommandMessage  string = "%s - ⚠ Command %s forbidden\n"
+	forbiddenCommandMessage  string = "%s - ⚠ Command kubectl %s forbidden\n"
 	forbiddenFlagMessage     string = "%s - ⚠ Flag(s) %s forbidden\n"
 	forbiddenChannelResponse string = "Sorry @%s, but I'm not allowed to run this command here :zipper_mouth_face:"
 	forbiddenCommandResponse string = "Sorry @%s, but I cannot run this command."
 	forbiddenFlagResponse    string = "Sorry @%s, but I'm not allowed to run one of your flags."
-	okResponse               string = "Roger that!\n@%s, this is the response to your request:\n"
+	okResponse               string = "\n@%s\n"
 )
 
 var (
@@ -132,7 +132,7 @@ func kubectl(command *bot.Cmd) (msg string, err error) {
 	t := time.Now()
 	time := t.Format(time.RFC3339)
 
-	if len(command.Args) > 0 && !kb.commands[command.Args[0]] {
+	if len(command.Args) > 0 {
 		fmt.Printf(forbiddenCommandMessage, time, command.Args)
 		return fmt.Sprintf(forbiddenCommandResponse), nil
 	}
