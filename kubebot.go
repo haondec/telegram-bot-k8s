@@ -132,11 +132,6 @@ func kubectl(command *bot.Cmd) (msg string, err error) {
 	t := time.Now()
 	time := t.Format(time.RFC3339)
 
-	if len(command.Args) > 0 {
-		fmt.Printf(forbiddenCommandMessage, time, command.Args)
-		return fmt.Sprintf(forbiddenCommandResponse), nil
-	}
-
 	if err := validateFlags(command.Args...); err != nil {
 		fmt.Printf(forbiddenFlagMessage, time, command.Args)
 		return fmt.Sprintf(forbiddenFlagResponse), nil
