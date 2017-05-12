@@ -5,14 +5,13 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/go-chat-bot/bot/slack"
+	"github.com/go-chat-bot/bot/telegram"
 )
 
 const (
-	slackTokenLabel        string = "KUBEBOT_SLACK_TOKEN"
-	slackChannelsLabel     string = "KUBEBOT_SLACK_CHANNELS_IDS"
-	slackAdminsLabel       string = "KUBEBOT_SLACK_ADMINS_NICKNAMES"
-	slackCommandsLabel     string = "KUBEBOT_SLACK_VALID_COMMANDS"
+	telegramTokenLabel        string = "KUBEBOT_TELEGRAM_TOKEN"
+	telegramChannelsLabel     string = "KUBEBOT_TELEGRAM_CHANNELS_IDS"
+	telegramCommandsLabel     string = "KUBEBOT_TELEGRAM_VALID_COMMANDS"
 	notDefinedErrorMessage string = "%s env variable not defined"
 )
 
@@ -21,17 +20,17 @@ var (
 )
 
 func validateEnvParams() error {
-	if os.Getenv(slackTokenLabel) == "" {
-		return errors.New(fmt.Sprintf(notDefinedErrorMessage, slackTokenLabel))
+	if os.Getenv(telegramTokenLabel) == "" {
+		return errors.New(fmt.Sprintf(notDefinedErrorMessage, telegramTokenLabel))
 	}
-	if os.Getenv(slackChannelsLabel) == "" {
-		return errors.New(fmt.Sprintf(notDefinedErrorMessage, slackChannelsLabel))
+	if os.Getenv(telegramChannelsLabel) == "" {
+		return errors.New(fmt.Sprintf(notDefinedErrorMessage, telegramChannelsLabel))
 	}
-	if os.Getenv(slackAdminsLabel) == "" {
-		return errors.New(fmt.Sprintf(notDefinedErrorMessage, slackAdminsLabel))
+	if os.Getenv(telegramAdminsLabel) == "" {
+		return errors.New(fmt.Sprintf(notDefinedErrorMessage, telegramAdminsLabel))
 	}
-	if os.Getenv(slackCommandsLabel) == "" {
-		return errors.New(fmt.Sprintf(notDefinedErrorMessage, slackCommandsLabel))
+	if os.Getenv(telegramCommandsLabel) == "" {
+		return errors.New(fmt.Sprintf(notDefinedErrorMessage, telegramCommandsLabel))
 	}
 
 	return nil
@@ -45,11 +44,10 @@ func main() {
 	}
 
 	kb = &Kubebot{
-		token:    os.Getenv(slackTokenLabel),
-		admins:   stringToMap(os.Getenv(slackAdminsLabel), " "),
-		channels: stringToMap(os.Getenv(slackChannelsLabel), " "),
-		commands: stringToMap(os.Getenv(slackCommandsLabel), " "),
+		token:    os.Getenv(telegramTokenLabel),
+		channels: stringToMap(os.Getenv(telegramChannelsLabel), " "),
+		commands: stringToMap(os.Getenv(telegramCommandsLabel), " "),
 	}
 
-	slack.Run(kb.token)
+	telegram.Run(kb.token)
 }
