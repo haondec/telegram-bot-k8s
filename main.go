@@ -4,8 +4,8 @@ import (
 	"errors"
 	"fmt"
 	"os"
-
-	"github.com/go-chat-bot/bot/telegram"
+	"github.com/gn1k/telegram-dev/bot/telegram"
+//	"github.com/go-chat-bot/bot/telegram"
 )
 
 const (

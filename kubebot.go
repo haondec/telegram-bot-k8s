@@ -4,8 +4,8 @@ import (
 	"errors"
 	"fmt"
 //	"time"
-
-	"github.com/go-chat-bot/bot"
+	"github.com/gn1k/telegram-dev/bot"
+//	"github.com/go-chat-bot/bot"
 )
 
 type Kubebot struct {
@@ -20,7 +20,7 @@ const (
 	forbiddenChannelResponse string = "Sorry @%s, but I'm not allowed to run this command here :zipper_mouth_face:"
 	forbiddenCommandResponse string = "Sorry @%s, but I cannot run this command."
 	forbiddenFlagResponse    string = "Sorry @%s, but I'm not allowed to run one of your flags."
-	okResponse               string = "\n@%s\n"
+	okResponse               string = "\n%s\n"
 )
 
 var (
@@ -136,8 +136,14 @@ func kubectl(command *bot.Cmd) (msg string, err error) {
 //		fmt.Printf(forbiddenFlagMessage, time, command.Args)
 //		return fmt.Sprintf(forbiddenFlagResponse), nil
 //	}
-
+//	fmt.Println(command.Args)
 	output := execute("kubectl", command.Args...)
+
+	return fmt.Sprintf(okResponse, output), nil
+}
+
+func deploy(command *bot.Cmd) (msg string, err error) {
+	output := execute("whoami", command.Args...)
 
 	return fmt.Sprintf(okResponse, output), nil
 }
@@ -148,4 +154,10 @@ func init() {
 		"Kubectl Telegram integration",
 		"",
 		kubectl)
+
+	bot.RegisterCommand(
+		"deploy",
+		"Deploy Telegram integration",
+		"",
+		deploy)
 }
