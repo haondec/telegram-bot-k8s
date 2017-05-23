@@ -3,7 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
-//	"time"
+	"time"
 	"github.com/gn1k/telegram-dev/bot"
 //	"github.com/go-chat-bot/bot"
 )
@@ -16,12 +16,51 @@ type Kubebot struct {
 }
 
 const (
+	// Declare message announce
 	forbiddenCommandMessage  string = "%s - ⚠ Command kubectl %s forbidden\n"
 	forbiddenFlagMessage     string = "%s - ⚠ Flag(s) %s forbidden\n"
 	forbiddenChannelResponse string = "Sorry @%s, but I'm not allowed to run this command here :zipper_mouth_face:"
 	forbiddenCommandResponse string = "Sorry @%s, but I cannot run this command."
 	forbiddenFlagResponse    string = "Sorry @%s, but I'm not allowed to run one of your flags."
-	okResponse               string = "\n%s\n"
+	
+	// Using
+	unAuthorizedUserResponse string = "[%s]\nUnauthorized user\n"
+	notAllowCommandResponse	 string = "[%s]\n[%s] Not allow to run \"%s\" command.\nPermission denied.\n"
+	okResponse               string = "[%s]\n%s\n"
+	
+	// Declare role level
+	rolelv3			 string = "projectManager"
+	rolelv2			 string = "developer"
+	rolelv1			 string = "guest"
+)
+
+var (
+	rolecmd = map[string]map[string]bool{
+		"create": map[string]bool{
+			"developer":	false,
+			"guest":	false,
+		},
+		"delete": map[string]bool{
+			"developer":	false,
+			"guest":	false,
+		},
+		"run": map[string]bool{
+			"developer":	false,
+			"guest":	false,
+		},
+		"exec": map[string]bool{
+                        "developer":    false,
+                        "guest":        false,
+                },
+		"scale": map[string]bool{
+                        "developer":    false,
+                        "guest":        false,
+                },
+		"apply": map[string]bool{
+                        "developer":    false,
+                        "guest":        false,
+                },
+	}
 )
 
 var (
@@ -130,23 +169,80 @@ func validateFlags(arguments ...string) error {
 }
 
 func kubectl(command *bot.Cmd) (msg string, err error) {
-//	t := time.Now()
-//	time := t.Format(time.RFC3339)
+	t := time.Now()
+	time := t.Format(time.RFC3339)
+	userid := command.User.ID
+	allow := false
+	exist := false
 
+//	fmt.Printf("This is nickname: %s\n", command.User.ID)
+//	fmt.Printf("This is id: %s\n", command.User.ID)
+//	fmt.Printf("This is realname: %s\n", command.User.RealName)
+	
+	// Get role of user
+	rls, exist := kb.roles[userid]
+
+	// Checking authorized user
+	if !exist {
+		fmt.Printf(unAuthorizedUserResponse, time)
+                return fmt.Sprintf(unAuthorizedUserResponse, time), nil
+	} else {
+		exist = false
+	}
+	
+	// Checking role command
+	if rls  == rolelv3 {			// Project manager
+		allow = true
+		exist = true
+	} else if rls == rolelv2 {		// Developer
+		allow, exist = rolecmd[command.Args[0]]["developer"]
+	} else if rls == rolelv1 {		// Guest
+		allow, exist = rolecmd[command.Args[0]]["guest"]
+	} else {				// Unknow role defined
+		allow = false
+		exist = true
+	}
+	
 //	if err := validateFlags(command.Args...); err != nil {
 //		fmt.Printf(forbiddenFlagMessage, time, command.Args)
 //		return fmt.Sprintf(forbiddenFlagResponse), nil
 //	}
 //	fmt.Println(command.Args)
-	output := execute("kubectl", command.Args...)
 
-	return fmt.Sprintf(okResponse, output), nil
+	output := ""
+	
+	if (exist && allow) || !exist {		// Case allow execute command
+		output = execute("kubectl", command.Args...)	
+	} else {				// Not allow, permission denied
+		fmt.Printf(notAllowCommandResponse, time, rls, "kubectl " + command.Args[0])
+		return fmt.Sprintf(notAllowCommandResponse, time, rls, "kubectl " + command.Args[0]), nil
+	}
+
+	return fmt.Sprintf(okResponse, time, output), nil
 }
 
 func deploy(command *bot.Cmd) (msg string, err error) {
+	t := time.Now()
+        time := t.Format(time.RFC3339)
+	userid := command.User.ID
+	rls, exist := kb.roles[userid]
+
+        // Checking authorized user
+        if !exist {
+                fmt.Printf(unAuthorizedUserResponse, time)
+                return fmt.Sprintf(unAuthorizedUserResponse, time), nil
+        }
+	
+	// if not Project Manager. Do nothing.
+	if rls != rolelv3 {
+		fmt.Printf(notAllowCommandResponse, time, rls, "kubectl " + command.Args[0])
+                return fmt.Sprintf(notAllowCommandResponse, time, rls, "kubectl " + command.Args[0]), nil
+	}
+	
+	// execute command with deploy
 	output := execute("whoami", command.Args...)
 
-	return fmt.Sprintf(okResponse, output), nil
+	return fmt.Sprintf(okResponse, time, output), nil
 }
 
 func init() {

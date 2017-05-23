@@ -27,8 +27,8 @@ func toJson(p interface{}) string {
 }
 
 func maintesting() {
-
-    claims := getClaims()
+    
+    claims := getClaims("pathtofile")
     for _, p := range claims {
         fmt.Println(p.toString())
     }
@@ -36,8 +36,8 @@ func maintesting() {
     fmt.Println(toJson(claims))
 }
 
-func getClaims() []Claim {
-    raw, err := ioutil.ReadFile("./Claims.json")
+func getClaims(fn string) []Claim {
+    raw, err := ioutil.ReadFile(fn)
     if err != nil {
         fmt.Println(err.Error())
         os.Exit(1)
