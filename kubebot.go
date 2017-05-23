@@ -12,6 +12,7 @@ type Kubebot struct {
 	token    string
 	channels map[string]bool
 	commands map[string]bool
+	roles	 map[string]string
 }
 
 const (
@@ -160,4 +161,14 @@ func init() {
 		"Deploy Telegram integration",
 		"",
 		deploy)
+}
+
+func rolemap(fn string) map[string]string {
+	claims := getClaims(fn)
+	var rm map[string]string
+	rm = make(map[string]string)
+	for _, p:= range claims {
+		rm[p.UserName] = p.Role
+	}
+	return rm
 }

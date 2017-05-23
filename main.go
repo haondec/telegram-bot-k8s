@@ -12,6 +12,7 @@ const (
 	telegramTokenLabel        string = "KUBEBOT_TELEGRAM_TOKEN"
 	telegramChannelsLabel     string = "KUBEBOT_TELEGRAM_CHANNELS_IDS"
 	telegramCommandsLabel     string = "KUBEBOT_TELEGRAM_VALID_COMMANDS"
+	telegramRolesLabel	  string = "KUBEBOT_TELEGRAM_ROLES_FILE"
 	notDefinedErrorMessage string = "%s env variable not defined"
 )
 
@@ -29,7 +30,9 @@ func validateEnvParams() error {
 	if os.Getenv(telegramCommandsLabel) == "" {
 		return errors.New(fmt.Sprintf(notDefinedErrorMessage, telegramCommandsLabel))
 	}
-
+	if os.Getenv(telegramRolesLabel) == "" {
+		return errors.New(fmt.Sprintf(notDefinedErrorMessage, telegramRolesLabel))
+	}
 	return nil
 }
 
@@ -44,6 +47,7 @@ func main() {
 		token:    os.Getenv(telegramTokenLabel),
 		channels: stringToMap(os.Getenv(telegramChannelsLabel), " "),
 		commands: stringToMap(os.Getenv(telegramCommandsLabel), " "),
+		roles:	  rolemap(os.Getenv(telegramRolesLabel)),
 	}
 
 	telegram.Run(kb.token, false)
