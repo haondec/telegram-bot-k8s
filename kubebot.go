@@ -3,11 +3,13 @@ package main
 import (
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"time"
 	"github.com/gn1k/telegram-dev/bot"
 //	"github.com/go-chat-bot/bot"
 )
 
+// Define struct kubebot
 type Kubebot struct {
 	token    string
 	channels map[string]bool
@@ -15,13 +17,14 @@ type Kubebot struct {
 	roles	 map[string]string
 }
 
+// Define constant var will use
 const (
 	// Declare message announce
 	forbiddenCommandMessage  string = "%s - ⚠ Command kubectl %s forbidden\n"
 	forbiddenFlagMessage     string = "%s - ⚠ Flag(s) %s forbidden\n"
 	forbiddenChannelResponse string = "Sorry @%s, but I'm not allowed to run this command here :zipper_mouth_face:"
 	forbiddenCommandResponse string = "Sorry @%s, but I cannot run this command."
-	forbiddenFlagResponse    string = "Sorry @%s, but I'm not allowed to run one of your flags."
+	forbiddenFlagResponse    string = "[%s]\nUnknown flag \"%s\".\nCancel task.\n"
 	
 	// Using
 	unAuthorizedUserResponse string = "[%s]\nUnauthorized user\n"
@@ -32,8 +35,21 @@ const (
 	rolelv3			 string = "projectManager"
 	rolelv2			 string = "developer"
 	rolelv1			 string = "guest"
+
+	// Format
+	timeFM			 string = time.RFC1123Z
+
+	// Deploy help
+	deploy_help		 string = `[%s]
+Usage: /deploy [OPTION]... [PROJECT NAME] [ENVIROMENT]
+Deploy pod, service or deployment on production or other env.
+Arguments support.
+    -h, --help             show help using
+    -s, --show             show list project
+    [Project name] [ENV]   /deploy projectA prod`
 )
 
+// Define var: mapping role <-> user
 var (
 	rolecmd = map[string]map[string]bool{
 		"create": map[string]bool{
@@ -63,6 +79,8 @@ var (
 	}
 )
 
+// Define var: command flag not accep
+// No use now
 var (
 	ignored = map[string]map[string]bool{
 		"get": map[string]bool{
@@ -168,9 +186,12 @@ func validateFlags(arguments ...string) error {
 	return nil
 }
 
+//------------------------------------------------------------------------
+
+// Func kubectl [option]... [flag]...
 func kubectl(command *bot.Cmd) (msg string, err error) {
 	t := time.Now()
-	time := t.Format(time.RFC3339)
+	time := t.Format(timeFM)
 	userid := command.User.ID
 	allow := false
 	exist := false
@@ -221,9 +242,12 @@ func kubectl(command *bot.Cmd) (msg string, err error) {
 	return fmt.Sprintf(okResponse, time, output), nil
 }
 
+//------------------------------------------------------------------------
+
+// Function deploy
 func deploy(command *bot.Cmd) (msg string, err error) {
 	t := time.Now()
-        time := t.Format(time.RFC3339)
+        time := t.Format(timeFM)
 	userid := command.User.ID
 	rls, exist := kb.roles[userid]
 
@@ -234,17 +258,47 @@ func deploy(command *bot.Cmd) (msg string, err error) {
         }
 	
 	// if not Project Manager. Do nothing.
-	if rls != rolelv3 {
-		fmt.Printf(notAllowCommandResponse, time, rls, "kubectl " + command.Args[0])
-                return fmt.Sprintf(notAllowCommandResponse, time, rls, "kubectl " + command.Args[0]), nil
+	if rls == rolelv3 {
+		fmt.Printf(notAllowCommandResponse, time, rls, "deploy " + command.Args[0])
+                return fmt.Sprintf(notAllowCommandResponse, time, rls, "deploy " + command.Args[0]), nil
 	}
 	
+	output := ""
 	// execute command with deploy
-	output := execute("whoami", command.Args...)
+	switch command.Args[0] {
+		case "", "-h", "--help":
+			// Show help using
+			return fmt.Sprintf(deploy_help, time), nil
+		case "-s", "--show":
+			// Show list project
+			files, err := ioutil.ReadDir("/home/kube-master2")
+			if err != nil {
+				return fmt.Sprintf(okResponse, time, output), nil
+			}
+			
+			output = "All project list bellow [Total %d]:\n"
+			cnt := 0
+			for _, f := range files {
+				if f.IsDir() {
+					output += f.Name() + "\n"
+					cnt++
+				}
+			}
+			output = fmt.Sprintf(output, cnt)
+			return fmt.Sprintf(okResponse, time, output), nil
+		default:
+			// Do nothing now
+			
+	}
+
+	output = execute("whoami", command.Args...)
 
 	return fmt.Sprintf(okResponse, time, output), nil
 }
 
+//------------------------------------------------------------------------
+
+// Init command will use
 func init() {
 	bot.RegisterCommand(
 		"kubectl",
@@ -259,6 +313,7 @@ func init() {
 		deploy)
 }
 
+// Func map file roles of user (file .json) 
 func rolemap(fn string) map[string]string {
 	claims := getClaims(fn)
 	var rm map[string]string
