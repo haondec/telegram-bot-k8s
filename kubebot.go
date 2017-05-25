@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"os"
 	"io/ioutil"
 	"time"
 	"github.com/gn1k/telegram-dev/bot"
@@ -25,9 +26,9 @@ const (
 	forbiddenChannelResponse string = "Sorry @%s, but I'm not allowed to run this command here :zipper_mouth_face:"
 	forbiddenCommandResponse string = "Sorry @%s, but I cannot run this command."
 	forbiddenFlagResponse    string = "[%s]\nUnknown flag \"%s\".\nCancel task.\n"
-	
+	forbiddenProjectResponse string = "[%s]\nProject \"%s\" not found.\nCancel task.\n"	
 	// Using
-	unAuthorizedUserResponse string = "[%s]\nUnauthorized user\n"
+	unAuthorizedUserResponse string = "[%s]\nUnauthorized user.\nCancel task.\n"
 	notAllowCommandResponse	 string = "[%s]\n[%s] Not allow to run \"%s\" command.\nPermission denied.\n"
 	okResponse               string = "[%s]\n%s\n"
 	
@@ -76,6 +77,18 @@ var (
                         "developer":    false,
                         "guest":        false,
                 },
+	}
+)
+
+var (
+	depcmd = map[string]map[string]bool{
+		"proname": map[string]bool{
+			"-p": true,
+			"--prod": true,
+			"--production": true,
+			"prod": true,
+			"production": true,
+		},
 	}
 )
 
@@ -201,6 +214,7 @@ func kubectl(command *bot.Cmd) (msg string, err error) {
 //	fmt.Printf("This is realname: %s\n", command.User.RealName)
 	
 	// Get role of user
+	kb.roles = rolemap(os.Getenv(telegramRolesLabel))
 	rls, exist := kb.roles[userid]
 
 	// Checking authorized user
@@ -210,7 +224,7 @@ func kubectl(command *bot.Cmd) (msg string, err error) {
 	} else {
 		exist = false
 	}
-	
+		
 	// Checking role command
 	if rls  == rolelv3 {			// Project manager
 		allow = true
@@ -249,6 +263,9 @@ func deploy(command *bot.Cmd) (msg string, err error) {
 	t := time.Now()
         time := t.Format(timeFM)
 	userid := command.User.ID
+	
+	// Get role
+	kb.roles = rolemap(os.Getenv(telegramRolesLabel))
 	rls, exist := kb.roles[userid]
 
         // Checking authorized user
@@ -257,6 +274,12 @@ func deploy(command *bot.Cmd) (msg string, err error) {
                 return fmt.Sprintf(unAuthorizedUserResponse, time), nil
         }
 	
+	// Only /deploy
+	if len(command.Args) < 1 {
+		// Show help using
+		return fmt.Sprintf(deploy_help, time), nil
+	}
+
 	// if not Project Manager. Do nothing.
 	if rls == rolelv3 {
 		fmt.Printf(notAllowCommandResponse, time, rls, "deploy " + command.Args[0])
@@ -266,18 +289,18 @@ func deploy(command *bot.Cmd) (msg string, err error) {
 	output := ""
 	// execute command with deploy
 	switch command.Args[0] {
-		case "", "-h", "--help":
+		case "-h", "--help":
 			// Show help using
 			return fmt.Sprintf(deploy_help, time), nil
 		case "-s", "--show":
 			// Show list project
-			files, err := ioutil.ReadDir("/home/kube-master2")
-			if err != nil {
-				return fmt.Sprintf(okResponse, time, output), nil
-			}
-			
+			files, err := ioutil.ReadDir(os.Getenv(telegramProjectLabel))
 			output = "All project list bellow [Total %d]:\n"
 			cnt := 0
+			if err != nil {
+				output = fmt.Sprintf(output, cnt)
+				return fmt.Sprintf(okResponse, time, output), nil
+			}
 			for _, f := range files {
 				if f.IsDir() {
 					output += f.Name() + "\n"
@@ -287,8 +310,46 @@ func deploy(command *bot.Cmd) (msg string, err error) {
 			output = fmt.Sprintf(output, cnt)
 			return fmt.Sprintf(okResponse, time, output), nil
 		default:
-			// Do nothing now
+			// Unknown flag
+			if len(command.Args) < 2 {
+				fmt.Printf(forbiddenFlagResponse, time, command.Args[0])
+				return fmt.Sprintf(forbiddenFlagResponse, time, command.Args[0]), nil
+			}
+			// Over command
+			if len(command.Args) > 2 {
+				fmt.Printf(forbiddenFlagResponse, time, command.Args[2])
+				return fmt.Sprintf(forbiddenFlagResponse, time, command.Args[2]), nil
+			}
 			
+			// Project not found
+			proname := command.Args[0]
+			check := false
+			files, err := ioutil.ReadDir("os.Getenv(telegramProjectLabel)")
+			if err != nil {
+				fmt.Printf(forbiddenProjectResponse, time, proname)
+                                return fmt.Sprintf(forbiddenProjectResponse, time, proname), nil
+			}
+			for _, f := range files {
+				if f.IsDir() && f.Name() == proname {
+					check = true
+					break
+				}
+			}
+
+			if check {			// founded
+				// This version support only flag env: production or prod
+				_, exist := depcmd["proname"][command.Args[1]]
+				if exist {
+					// Deploy project
+					
+				} else {
+					fmt.Printf(forbiddenFlagResponse, time, command.Args[1])
+					return fmt.Sprintf(forbiddenFlagResponse, time, command.Args[1]), nil
+				}
+			} else {			// not found
+				fmt.Printf(forbiddenProjectResponse, time, proname)
+				return fmt.Sprintf(forbiddenProjectResponse, time, proname), nil
+			}
 	}
 
 	output = execute("whoami", command.Args...)
