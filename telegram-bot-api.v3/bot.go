@@ -7,7 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/gn1k/telegram-dev/multipartstreamer"
+	"github.com/gn1k/telegram-bot-k8s/multipartstreamer"
 //	"github.com/technoweenie/multipartstreamer"
 	"io/ioutil"
 	"log"

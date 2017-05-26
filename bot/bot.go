@@ -5,7 +5,7 @@ import (
 	"log"
 	"math/rand"
 	"time"
-	"github.com/gn1k/telegram-dev/cron"
+	"github.com/gn1k/telegram-bot-k8s/cron"
 //	"github.com/robfig/cron"
 )
 

@@ -4,7 +4,7 @@ import (
 	"errors"
 	"regexp"
 	"strings"
-	"github.com/gn1k/telegram-dev/go-shellwords"
+	"github.com/gn1k/telegram-bot-k8s/go-shellwords"
 //	"github.com/mattn/go-shellwords"
 )
 

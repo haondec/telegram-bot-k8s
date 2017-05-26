@@ -5,9 +5,9 @@ import (
 	"log"
 	"strconv"
 	"strings"
-	"github.com/gn1k/telegram-dev/bot"
+	"github.com/gn1k/telegram-bot-k8s/bot"
 //	"github.com/go-chat-bot/bot"
-	"github.com/gn1k/telegram-dev/telegram-bot-api.v3"
+	"github.com/gn1k/telegram-bot-k8s/telegram-bot-api.v3"
 //	"gopkg.in/telegram-bot-api.v3"
 )
 

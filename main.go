@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"github.com/gn1k/telegram-dev/bot/telegram"
+	"github.com/gn1k/telegram-bot-k8s/bot/telegram"
 //	"github.com/go-chat-bot/bot/telegram"
 )
 

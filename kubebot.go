@@ -6,7 +6,7 @@ import (
 	"os"
 	"io/ioutil"
 	"time"
-	"github.com/gn1k/telegram-dev/bot"
+	"github.com/gn1k/telegram-bot-k8s/bot"
 //	"github.com/go-chat-bot/bot"
 )
 
