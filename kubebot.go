@@ -48,6 +48,16 @@ Arguments support.
     -h, --help             show help using
     -s, --show             show list project
     [Project name] [ENV]   /deploy projectA prod`
+
+	// Help bot
+	bot_help		 string = `[%s]
+@Telegram bot communicate which kubernetes - hcmus
+@Support: /help             Get user-id, info command and support
+          /deploy           Deploy production, /deploy -h: get more
+          /kubectl          All command kubectl support api 1.24
+
+Your id telegram: %s
+Contact Sysadmin/ProjectManager to authorize user`
 )
 
 // Define var: mapping role <-> user
@@ -324,7 +334,7 @@ func deploy(command *bot.Cmd) (msg string, err error) {
 			// Project not found
 			proname := command.Args[0]
 			check := false
-			files, err := ioutil.ReadDir("os.Getenv(telegramProjectLabel)")
+			files, err := ioutil.ReadDir(os.Getenv(telegramProjectLabel))
 			if err != nil {
 				fmt.Printf(forbiddenProjectResponse, time, proname)
                                 return fmt.Sprintf(forbiddenProjectResponse, time, proname), nil
@@ -341,7 +351,10 @@ func deploy(command *bot.Cmd) (msg string, err error) {
 				_, exist := depcmd["proname"][command.Args[1]]
 				if exist {
 					// Deploy project
-					
+					path := os.Getenv(telegramProjectLabel) + proname + "/" + proname + "_prod.yaml"
+					kube_command := []string{"create", "-f", path}
+					output = execute("kubectl", kube_command...)
+					return fmt.Sprintf(okResponse, time, output), nil
 				} else {
 					fmt.Printf(forbiddenFlagResponse, time, command.Args[1])
 					return fmt.Sprintf(forbiddenFlagResponse, time, command.Args[1]), nil
@@ -351,10 +364,16 @@ func deploy(command *bot.Cmd) (msg string, err error) {
 				return fmt.Sprintf(forbiddenProjectResponse, time, proname), nil
 			}
 	}
+}
 
-	output = execute("whoami", command.Args...)
+//------------------------------------------------------------------------
 
-	return fmt.Sprintf(okResponse, time, output), nil
+// Function help bot
+func info(command *bot.Cmd) (msg string, err error) {
+	t := time.Now()
+        time := t.Format(timeFM)
+        userid := command.User.ID
+	return fmt.Sprintf(bot_help, time, userid), nil
 }
 
 //------------------------------------------------------------------------
@@ -372,6 +391,11 @@ func init() {
 		"Deploy Telegram integration",
 		"",
 		deploy)
+	bot.RegisterCommand(
+		"info",
+		"Info Telegram integration",
+		"",
+		info)
 }
 
 // Func map file roles of user (file .json) 
