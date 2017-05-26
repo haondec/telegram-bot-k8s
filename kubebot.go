@@ -16,6 +16,7 @@ type Kubebot struct {
 	channels map[string]bool
 	commands map[string]bool
 	roles	 map[string]string
+	logname  string
 }
 
 // Define constant var will use
@@ -26,10 +27,14 @@ const (
 	forbiddenChannelResponse string = "Sorry @%s, but I'm not allowed to run this command here :zipper_mouth_face:"
 	forbiddenCommandResponse string = "Sorry @%s, but I cannot run this command."
 	forbiddenFlagResponse    string = "[%s]\nUnknown flag \"%s\".\nCancel task.\n"
-	forbiddenProjectResponse string = "[%s]\nProject \"%s\" not found.\nCancel task.\n"	
+	forbiddenFlagResponse_log    string = "Unknown flag: %s."
+	forbiddenProjectResponse string = "[%s]\nProject \"%s\" not found.\nCancel task.\n"
+	forbiddenProjectResponse_log string = "Project: %s not found."
 	// Using
-	unAuthorizedUserResponse string = "[%s]\nUnauthorized user.\nCancel task.\n"
+	unAuthorizedUserResponse string = "[%s]\nUnauthorized user: %s.\nCancel task.\n"
+	unAuthorizedUserResponse_log string = "Unauthorized user.\n"
 	notAllowCommandResponse	 string = "[%s]\n[%s] Not allow to run \"%s\" command.\nPermission denied.\n"
+	notAllowCommandResponse_log  string = "%s - Not allow to run: %s command.Permission denied."
 	okResponse               string = "[%s]\n%s\n"
 	
 	// Declare role level
@@ -203,7 +208,6 @@ func validateFlags(arguments ...string) error {
 		if ignored[arguments[0]][arguments[i]] {
 			return errors.New(fmt.Sprintf("Error: %s is an invalid flag", arguments[i]))
 		}
-
 	}
 
 	return nil
@@ -223,14 +227,18 @@ func kubectl(command *bot.Cmd) (msg string, err error) {
 //	fmt.Printf("This is id: %s\n", command.User.ID)
 //	fmt.Printf("This is realname: %s\n", command.User.RealName)
 	
+	// Write log recv command
+	writeLog(userid, "Receive command kubectl.")
+
 	// Get role of user
-	kb.roles = rolemap(os.Getenv(telegramRolesLabel))
-	rls, exist := kb.roles[userid]
+	kb_main.roles = rolemap(os.Getenv(telegramRolesLabel))
+	rls, exist := kb_main.roles[userid]
 
 	// Checking authorized user
 	if !exist {
-		fmt.Printf(unAuthorizedUserResponse, time)
-                return fmt.Sprintf(unAuthorizedUserResponse, time), nil
+		writeLog(userid, unAuthorizedUserResponse_log)
+		fmt.Printf(unAuthorizedUserResponse, time, userid)
+                return fmt.Sprintf(unAuthorizedUserResponse, time, userid), nil
 	} else {
 		exist = false
 	}
@@ -259,6 +267,7 @@ func kubectl(command *bot.Cmd) (msg string, err error) {
 	if (exist && allow) || !exist {		// Case allow execute command
 		output = execute("kubectl", command.Args...)	
 	} else {				// Not allow, permission denied
+		writeLog(userid, fmt.Sprintf(notAllowCommandResponse_log, rls, "kubectl " + command.Args[0]))
 		fmt.Printf(notAllowCommandResponse, time, rls, "kubectl " + command.Args[0])
 		return fmt.Sprintf(notAllowCommandResponse, time, rls, "kubectl " + command.Args[0]), nil
 	}
@@ -274,13 +283,17 @@ func deploy(command *bot.Cmd) (msg string, err error) {
         time := t.Format(timeFM)
 	userid := command.User.ID
 	
+	// Write log recv command 
+        writeLog(userid, "Receive command deploy.")
+
 	// Get role
-	kb.roles = rolemap(os.Getenv(telegramRolesLabel))
-	rls, exist := kb.roles[userid]
+	kb_main.roles = rolemap(os.Getenv(telegramRolesLabel))
+	rls, exist := kb_main.roles[userid]
 
         // Checking authorized user
         if !exist {
-                fmt.Printf(unAuthorizedUserResponse, time)
+		writeLog(userid, unAuthorizedUserResponse_log)
+		fmt.Printf(unAuthorizedUserResponse, time)
                 return fmt.Sprintf(unAuthorizedUserResponse, time), nil
         }
 	
@@ -292,6 +305,7 @@ func deploy(command *bot.Cmd) (msg string, err error) {
 
 	// if not Project Manager. Do nothing.
 	if rls == rolelv3 {
+		writeLog(userid, fmt.Sprintf(notAllowCommandResponse_log, rls, "deploy " + command.Args[0]))
 		fmt.Printf(notAllowCommandResponse, time, rls, "deploy " + command.Args[0])
                 return fmt.Sprintf(notAllowCommandResponse, time, rls, "deploy " + command.Args[0]), nil
 	}
@@ -322,11 +336,13 @@ func deploy(command *bot.Cmd) (msg string, err error) {
 		default:
 			// Unknown flag
 			if len(command.Args) < 2 {
+				writeLog(userid, fmt.Sprintf(forbiddenFlagResponse_log, command.Args[0]))
 				fmt.Printf(forbiddenFlagResponse, time, command.Args[0])
 				return fmt.Sprintf(forbiddenFlagResponse, time, command.Args[0]), nil
 			}
 			// Over command
 			if len(command.Args) > 2 {
+				writeLog(userid, fmt.Sprintf(forbiddenFlagResponse_log, command.Args[2]))
 				fmt.Printf(forbiddenFlagResponse, time, command.Args[2])
 				return fmt.Sprintf(forbiddenFlagResponse, time, command.Args[2]), nil
 			}
@@ -336,6 +352,7 @@ func deploy(command *bot.Cmd) (msg string, err error) {
 			check := false
 			files, err := ioutil.ReadDir(os.Getenv(telegramProjectLabel))
 			if err != nil {
+				writeLog(userid, fmt.Sprintf(forbiddenProjectResponse_log, proname))
 				fmt.Printf(forbiddenProjectResponse, time, proname)
                                 return fmt.Sprintf(forbiddenProjectResponse, time, proname), nil
 			}
@@ -356,10 +373,12 @@ func deploy(command *bot.Cmd) (msg string, err error) {
 					output = execute("kubectl", kube_command...)
 					return fmt.Sprintf(okResponse, time, output), nil
 				} else {
+					writeLog(userid, fmt.Sprintf(forbiddenFlagResponse_log, command.Args[1]))
 					fmt.Printf(forbiddenFlagResponse, time, command.Args[1])
 					return fmt.Sprintf(forbiddenFlagResponse, time, command.Args[1]), nil
 				}
 			} else {			// not found
+				writeLog(userid, fmt.Sprintf(forbiddenProjectResponse_log, proname))
 				fmt.Printf(forbiddenProjectResponse, time, proname)
 				return fmt.Sprintf(forbiddenProjectResponse, time, proname), nil
 			}
@@ -373,6 +392,9 @@ func info(command *bot.Cmd) (msg string, err error) {
 	t := time.Now()
         time := t.Format(timeFM)
         userid := command.User.ID
+
+	// Write log recv command
+        writeLog(userid, "Receive command info.")
 	return fmt.Sprintf(bot_help, time, userid), nil
 }
 

@@ -8,8 +8,8 @@ import (
 )
 
 type Claim struct {
-    UserName string `json:"username"`
-    Role string `json:"role"`
+    UserName 	string `json:"username"`
+    Role 	string `json:"role"`
 }
 
 func (p Claim) toString() string {
@@ -20,7 +20,7 @@ func toJson(p interface{}) string {
     bytes, err := json.Marshal(p)
     if err != nil {
         fmt.Println(err.Error())
-        os.Exit(1)
+//        os.Exit(1)
     }
 
     return string(bytes)
