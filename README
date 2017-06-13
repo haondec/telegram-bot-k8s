@@ -1,0 +1,4 @@
+export KUBEBOT_TELEGRAM_TOKEN="335xxxxxx:AAHs0jzQrQYva4DFXLemDbhQYBaPlyxbxxx"
+export KUBEBOT_TELEGRAM_ROLES_FILE="$HOME/kube-workplace/roletelegram"
+export KUBEBOT_TELEGRAM_PROJECT_DIR="$HOME/kube-workplace/deploytelegram"
+export KUBEBOT_TELEGRAM_LOG_DIR="$HOME/kube-workplace/logtelegram"
