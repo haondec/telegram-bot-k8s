@@ -213,12 +213,17 @@ func validateFlags(arguments ...string) error {
 	return nil
 }
 
+
+// get time
+func getTime() string {
+	t := time.Now()
+	return t.Format(timeFM)
+}
+
 //------------------------------------------------------------------------
 
 // Func kubectl [option]... [flag]...
 func kubectl(command *bot.Cmd) (msg string, err error) {
-	t := time.Now()
-	time := t.Format(timeFM)
 	userid := command.User.ID
 	allow := false
 	exist := false
@@ -237,8 +242,8 @@ func kubectl(command *bot.Cmd) (msg string, err error) {
 	// Checking authorized user
 	if !exist {
 		writeLog(userid, unAuthorizedUserResponse_log)
-		fmt.Printf(unAuthorizedUserResponse, time, userid)
-                return fmt.Sprintf(unAuthorizedUserResponse, time, userid), nil
+		fmt.Printf(unAuthorizedUserResponse, getTime(), userid)
+                return fmt.Sprintf(unAuthorizedUserResponse, getTime(), userid), nil
 	} else {
 		exist = false
 	}
@@ -257,7 +262,7 @@ func kubectl(command *bot.Cmd) (msg string, err error) {
 	}
 	
 //	if err := validateFlags(command.Args...); err != nil {
-//		fmt.Printf(forbiddenFlagMessage, time, command.Args)
+//		fmt.Printf(forbiddenFlagMessage, getTime(), command.Args)
 //		return fmt.Sprintf(forbiddenFlagResponse), nil
 //	}
 //	fmt.Println(command.Args)
@@ -268,19 +273,17 @@ func kubectl(command *bot.Cmd) (msg string, err error) {
 		output = execute("kubectl", command.Args...)	
 	} else {				// Not allow, permission denied
 		writeLog(userid, fmt.Sprintf(notAllowCommandResponse_log, rls, "kubectl " + command.Args[0]))
-		fmt.Printf(notAllowCommandResponse, time, rls, "kubectl " + command.Args[0])
-		return fmt.Sprintf(notAllowCommandResponse, time, rls, "kubectl " + command.Args[0]), nil
+		fmt.Printf(notAllowCommandResponse, getTime(), rls, "kubectl " + command.Args[0])
+		return fmt.Sprintf(notAllowCommandResponse, getTime(), rls, "kubectl " + command.Args[0]), nil
 	}
 
-	return fmt.Sprintf(okResponse, time, output), nil
+	return fmt.Sprintf(okResponse, getTime(), output), nil
 }
 
 //------------------------------------------------------------------------
 
 // Function deploy
 func deploy(command *bot.Cmd) (msg string, err error) {
-	t := time.Now()
-        time := t.Format(timeFM)
 	userid := command.User.ID
 	
 	// Write log recv command 
@@ -293,21 +296,21 @@ func deploy(command *bot.Cmd) (msg string, err error) {
         // Checking authorized user
         if !exist {
 		writeLog(userid, unAuthorizedUserResponse_log)
-		fmt.Printf(unAuthorizedUserResponse, time)
-                return fmt.Sprintf(unAuthorizedUserResponse, time), nil
+		fmt.Printf(unAuthorizedUserResponse, getTime())
+                return fmt.Sprintf(unAuthorizedUserResponse, getTime()), nil
         }
 	
 	// Only /deploy
 	if len(command.Args) < 1 {
 		// Show help using
-		return fmt.Sprintf(deploy_help, time), nil
+		return fmt.Sprintf(deploy_help, getTime()), nil
 	}
 
 	// if not Project Manager. Do nothing.
-	if rls == rolelv3 {
+	if rls != rolelv3 {
 		writeLog(userid, fmt.Sprintf(notAllowCommandResponse_log, rls, "deploy " + command.Args[0]))
-		fmt.Printf(notAllowCommandResponse, time, rls, "deploy " + command.Args[0])
-                return fmt.Sprintf(notAllowCommandResponse, time, rls, "deploy " + command.Args[0]), nil
+		fmt.Printf(notAllowCommandResponse, getTime(), rls, "deploy " + command.Args[0])
+                return fmt.Sprintf(notAllowCommandResponse, getTime(), rls, "deploy " + command.Args[0]), nil
 	}
 	
 	output := ""
@@ -315,7 +318,7 @@ func deploy(command *bot.Cmd) (msg string, err error) {
 	switch command.Args[0] {
 		case "-h", "--help":
 			// Show help using
-			return fmt.Sprintf(deploy_help, time), nil
+			return fmt.Sprintf(deploy_help, getTime()), nil
 		case "-s", "--show":
 			// Show list project
 			files, err := ioutil.ReadDir(os.Getenv(telegramProjectLabel))
@@ -323,7 +326,7 @@ func deploy(command *bot.Cmd) (msg string, err error) {
 			cnt := 0
 			if err != nil {
 				output = fmt.Sprintf(output, cnt)
-				return fmt.Sprintf(okResponse, time, output), nil
+				return fmt.Sprintf(okResponse, getTime(), output), nil
 			}
 			for _, f := range files {
 				if f.IsDir() {
@@ -332,56 +335,85 @@ func deploy(command *bot.Cmd) (msg string, err error) {
 				}
 			}
 			output = fmt.Sprintf(output, cnt)
-			return fmt.Sprintf(okResponse, time, output), nil
+			return fmt.Sprintf(okResponse, getTime(), output), nil
 		default:
+			check := false
+			number := 0
 			// Unknown flag
 			if len(command.Args) < 2 {
-				writeLog(userid, fmt.Sprintf(forbiddenFlagResponse_log, command.Args[0]))
-				fmt.Printf(forbiddenFlagResponse, time, command.Args[0])
-				return fmt.Sprintf(forbiddenFlagResponse, time, command.Args[0]), nil
+				number = 0
+				check = true
 			}
-			// Over command
-			if len(command.Args) > 2 {
-				writeLog(userid, fmt.Sprintf(forbiddenFlagResponse_log, command.Args[2]))
-				fmt.Printf(forbiddenFlagResponse, time, command.Args[2])
-				return fmt.Sprintf(forbiddenFlagResponse, time, command.Args[2]), nil
+			if len(command.Args) > 4 {
+				number = 4
+				check = true
+			}
+			if len(command.Args) == 3 {
+				number = 2
+				check = true
+			}
+			
+			if check {
+				writeLog(userid, fmt.Sprintf(forbiddenFlagResponse_log, command.Args[number]))
+				fmt.Printf(forbiddenFlagResponse, getTime(), command.Args[number])
+				return fmt.Sprintf(forbiddenFlagResponse, getTime(), command.Args[number]), nil
 			}
 			
 			// Project not found
 			proname := command.Args[0]
-			check := false
+			check = false
 			files, err := ioutil.ReadDir(os.Getenv(telegramProjectLabel))
 			if err != nil {
 				writeLog(userid, fmt.Sprintf(forbiddenProjectResponse_log, proname))
-				fmt.Printf(forbiddenProjectResponse, time, proname)
-                                return fmt.Sprintf(forbiddenProjectResponse, time, proname), nil
+				fmt.Printf(forbiddenProjectResponse, getTime, proname)
+                                return fmt.Sprintf(forbiddenProjectResponse, getTime, proname), nil
 			}
+			
+			// Find project
 			for _, f := range files {
 				if f.IsDir() && f.Name() == proname {
 					check = true
 					break
 				}
 			}
-
-			if check {			// founded
-				// This version support only flag env: production or prod
-				_, exist := depcmd["proname"][command.Args[1]]
-				if exist {
-					// Deploy project
-					path := os.Getenv(telegramProjectLabel) + proname + "/" + proname + "_prod.yaml"
-					kube_command := []string{"create", "-f", path}
-					output = execute("kubectl", kube_command...)
-					return fmt.Sprintf(okResponse, time, output), nil
-				} else {
-					writeLog(userid, fmt.Sprintf(forbiddenFlagResponse_log, command.Args[1]))
-					fmt.Printf(forbiddenFlagResponse, time, command.Args[1])
-					return fmt.Sprintf(forbiddenFlagResponse, time, command.Args[1]), nil
-				}
-			} else {			// not found
+			
+			// Project not found
+			if check == false {
 				writeLog(userid, fmt.Sprintf(forbiddenProjectResponse_log, proname))
-				fmt.Printf(forbiddenProjectResponse, time, proname)
-				return fmt.Sprintf(forbiddenProjectResponse, time, proname), nil
+				fmt.Printf(forbiddenProjectResponse, getTime(), proname)
+				return fmt.Sprintf(forbiddenProjectResponse, getTime(), proname), nil
 			}
+
+			// This version support only flag env: production or prod
+			check = false
+			version := "latest"
+			number = len(command.Args)
+			_, exist := depcmd["proname"][command.Args[number - 1]]
+			if exist {
+				if number == 4 {
+					if command.Args[1] != "--version" && command.Args[1] != "-v" {
+						number = 1
+						check = true
+					}
+					version = command.Args[2]
+				}
+			} else {
+				number -= 1
+				check = true
+			}
+			
+			// Invalid flag
+			if check {
+				writeLog(userid, fmt.Sprintf(forbiddenFlagResponse_log, command.Args[number]))
+				fmt.Printf(forbiddenFlagResponse, getTime(), command.Args[number])
+				return fmt.Sprintf(forbiddenFlagResponse, getTime(), command.Args[number]), nil
+			}
+			
+			// Deploy project
+			path := validatePath(os.Getenv(telegramProjectLabel)) + proname + "/" + proname + "_prod.yaml"
+			kube_command := []string{"tag=" +  version, "|", "envsubst", "<", path, "|", "kubectl", "create", "-f", "-"}
+			output = execute("export", kube_command...)
+			return fmt.Sprintf(okResponse, getTime(), output), nil
 	}
 }
 
@@ -389,13 +421,11 @@ func deploy(command *bot.Cmd) (msg string, err error) {
 
 // Function help bot
 func info(command *bot.Cmd) (msg string, err error) {
-	t := time.Now()
-        time := t.Format(timeFM)
         userid := command.User.ID
 
 	// Write log recv command
         writeLog(userid, "Receive command info.")
-	return fmt.Sprintf(bot_help, time, userid), nil
+	return fmt.Sprintf(bot_help, getTime(), userid), nil
 }
 
 //------------------------------------------------------------------------
