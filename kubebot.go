@@ -22,21 +22,24 @@ type Kubebot struct {
 // Define constant var will use
 const (
 	// Declare message announce
-	forbiddenCommandMessage  string = "%s - ⚠ Command kubectl %s forbidden\n"
-	forbiddenFlagMessage     string = "%s - ⚠ Flag(s) %s forbidden\n"
-	forbiddenChannelResponse string = "Sorry @%s, but I'm not allowed to run this command here :zipper_mouth_face:"
-	forbiddenCommandResponse string = "Sorry @%s, but I cannot run this command."
-	forbiddenFlagResponse    string = "[%s]\nUnknown flag \"%s\".\nCancel task.\n"
-	forbiddenFlagResponse_log    string = "Unknown flag: %s."
-	forbiddenProjectResponse string = "[%s]\nProject \"%s\" not found.\nCancel task.\n"
-	forbiddenProjectResponse_log string = "Project: %s not found."
-	// Using
-	unAuthorizedUserResponse string = "[%s]\nUnauthorized user: %s.\nCancel task.\n"
-	unAuthorizedUserResponse_log string = "Unauthorized user.\n"
-	notAllowCommandResponse	 string = "[%s]\n[%s] Not allow to run \"%s\" command.\nPermission denied.\n"
-	notAllowCommandResponse_log  string = "%s - Not allow to run: %s command.Permission denied."
-	okResponse               string = "[%s]\n%s\n"
+	forbiddenCommandMessage		string = "%s - ⚠ Command kubectl %s forbidden\n"
+	forbiddenFlagMessage		string = "%s - ⚠ Flag(s) %s forbidden\n"
+	forbiddenChannelResponse	string = "Sorry @%s, but I'm not allowed to run this command here :zipper_mouth_face:"
+	forbiddenCommandResponse	string = "Sorry @%s, but I cannot run this command."
+	forbiddenFlagResponse		string = "[%s]\nUnknown flag \"%s\".\nCancel task.\n"
+	forbiddenFlagResponse_log	string = "Unknown flag: %s."
+	forbiddenProjectResponse	string = "[%s]\nProject \"%s\" not found.\nCancel task.\n"
+	forbiddenProjectResponse_log	string = "Project: %s not found."
 	
+	// Using
+	unAuthorizedUserResponse	string = "[%s]\nUnauthorized user: %s.\nCancel task.\n"
+	unAuthorizedUserResponse_log	string = "Unauthorized user.\n"
+	notAllowCommandResponse		string = "[%s]\n[%s] Not allow to run \"%s\" command.\nPermission denied.\n"
+	notAllowCommandResponse_log	string = "Not allow to run: %s command.Permission denied."
+	okResponse			string = "[%s]\n%s\n"
+	deploymentResponse_log		string = "Deploy project: %s - version: %s - env: %s."
+	deploymentResponse		string = "[%s] Deploy project: %s - version: %s - env: %s.\n"
+
 	// Declare role level
 	rolelv3			 string = "projectManager"
 	rolelv2			 string = "developer"
@@ -97,7 +100,7 @@ var (
 
 var (
 	depcmd = map[string]map[string]bool{
-		"proname": map[string]bool{
+		"environment": map[string]bool{
 			"-p": true,
 			"--prod": true,
 			"--production": true,
@@ -385,10 +388,11 @@ func deploy(command *bot.Cmd) (msg string, err error) {
 			}
 
 			// This version support only flag env: production or prod
-			check = false
-			version := "latest"
-			number = len(command.Args)
-			_, exist := depcmd["proname"][command.Args[number - 1]]
+			check	= false
+			number	= len(command.Args) 
+			version	:= "latest"
+			env	:= command.Args[number - 1]
+			_, exist := depcmd["environment"][env]
 			if exist {
 				if number == 4 {
 					if command.Args[1] != "--version" && command.Args[1] != "-v" {
@@ -410,9 +414,15 @@ func deploy(command *bot.Cmd) (msg string, err error) {
 			}
 			
 			// Deploy project
-			path := validatePath(os.Getenv(telegramProjectLabel)) + proname + "/" + proname + "_prod.yaml"
-			kube_command := []string{"tag=" +  version, "|", "envsubst", "<", path, "|", "kubectl", "create", "-f", "-"}
-			output = execute("export", kube_command...)
+			// Now support only env: prod
+//			path := validatePath(os.Getenv(telegramProjectLabel)) + proname + "/" + proname + "_prod.yaml"	
+			deploy_script := validatePath(os.Getenv(telegramProjectLabel)) + proname + "/" + "deploy_script.sh"
+			kube_command := []string{deploy_script}
+//			pipe_stdin := []string{path, version}
+			pipe_stdin := []string{version}
+			output = execute_pipe(pipe_stdin, "sh", kube_command...)
+			writeLog(userid, fmt.Sprintf(deploymentResponse_log, proname, version, "production"))
+			fmt.Printf(deploymentResponse, getTime(), proname, version, "production")
 			return fmt.Sprintf(okResponse, getTime(), output), nil
 	}
 }
