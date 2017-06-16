@@ -39,6 +39,9 @@ const (
 	okResponse			string = "[%s]\n%s\n"
 	deploymentResponse_log		string = "Deploy project: %s - version: %s - env: %s."
 	deploymentResponse		string = "[%s] Deploy project: %s - version: %s - env: %s.\n"
+	
+	missingFlagResponse_log		string = "Command %s missing flag."
+	missingFlagResponse		string = "[%s] Command %s missing flag."
 
 	// Declare role level
 	rolelv3			 string = "projectManager"
@@ -275,9 +278,9 @@ func kubectl(command *bot.Cmd) (msg string, err error) {
 	if (exist && allow) || !exist {		// Case allow execute command
 		output = execute("kubectl", command.Args...)	
 	} else {				// Not allow, permission denied
-		writeLog(userid, fmt.Sprintf(notAllowCommandResponse_log, rls, "kubectl " + command.Args[0]))
-		fmt.Printf(notAllowCommandResponse, getTime(), rls, "kubectl " + command.Args[0])
-		return fmt.Sprintf(notAllowCommandResponse, getTime(), rls, "kubectl " + command.Args[0]), nil
+		writeLog(userid, fmt.Sprintf(notAllowCommandResponse_log, rls, "Kubectl " + command.Args[0]))
+		fmt.Printf(notAllowCommandResponse, getTime(), rls, "Kubectl " + command.Args[0])
+		return fmt.Sprintf(notAllowCommandResponse, getTime(), rls, "Kubectl " + command.Args[0]), nil
 	}
 
 	return fmt.Sprintf(okResponse, getTime(), output), nil
@@ -311,9 +314,9 @@ func deploy(command *bot.Cmd) (msg string, err error) {
 
 	// if not Project Manager. Do nothing.
 	if rls != rolelv3 {
-		writeLog(userid, fmt.Sprintf(notAllowCommandResponse_log, rls, "deploy " + command.Args[0]))
-		fmt.Printf(notAllowCommandResponse, getTime(), rls, "deploy " + command.Args[0])
-                return fmt.Sprintf(notAllowCommandResponse, getTime(), rls, "deploy " + command.Args[0]), nil
+		writeLog(userid, fmt.Sprintf(notAllowCommandResponse_log, rls, "Deploy " + command.Args[0]))
+		fmt.Printf(notAllowCommandResponse, getTime(), rls, "Deploy " + command.Args[0])
+                return fmt.Sprintf(notAllowCommandResponse, getTime(), rls, "Deploy " + command.Args[0]), nil
 	}
 	
 	output := ""
@@ -339,6 +342,14 @@ func deploy(command *bot.Cmd) (msg string, err error) {
 			}
 			output = fmt.Sprintf(output, cnt)
 			return fmt.Sprintf(okResponse, getTime(), output), nil
+		case "-d", "--delete":
+			// Delete deployment project
+			if len(command.Args) != 3 {
+				writeLog(userid, fmt.Sprintf(missingFlagResponse_log, "Delete")
+				fmt.Printf(missingFlagResponse, getTime(), "Delete")
+				return fmt.Sprintf(missingFlagResponse, getTime(), "Delete"), nil
+			}
+			
 		default:
 			check := false
 			number := 0
