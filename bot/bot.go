@@ -87,3 +87,8 @@ func (b *Bot) MessageReceived(channel *ChannelData, text string, sender *User) {
 func init() {
 	rand.Seed(time.Now().UnixNano())
 }
+
+func SendMessage(b *Bot, channel string, text string, sender *User) {
+	b.handlers.Response(channel, text, sender)
+	return
+}

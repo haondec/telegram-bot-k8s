@@ -13,6 +13,8 @@ import (
 
 var (
 	tg *tgbotapi.BotAPI
+	// tBot: my add
+	TBot *bot.Bot
 )
 
 func responseHandler(target string, message string, sender *bot.User) {
@@ -47,10 +49,10 @@ func Run(token string, debug bool) {
 		log.Fatal(err)
 	}
 
-	b := bot.New(&bot.Handlers{
+	TBot = bot.New(&bot.Handlers{
 		Response: responseHandler,
 	})
-	b.Disable([]string{"url"})
+	TBot.Disable([]string{"url"})
 
 	for update := range updates {
 		target := &bot.ChannelData{
@@ -60,7 +62,7 @@ func Run(token string, debug bool) {
 			IsPrivate: update.Message.Chat.IsPrivate()}
 		name := []string{update.Message.From.FirstName, update.Message.From.LastName}
 
-		b.MessageReceived(target, update.Message.Text, &bot.User{
+		TBot.MessageReceived(target, update.Message.Text, &bot.User{
 			ID:       strconv.Itoa(update.Message.From.ID),
 			Nick:     update.Message.From.UserName,
 			RealName: strings.Join(name, " ")})

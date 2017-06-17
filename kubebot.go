@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"time"
 	"github.com/gn1k/telegram-bot-k8s/bot"
+	telegram "github.com/gn1k/telegram-bot-k8s/bot/telegram"
 //	"github.com/go-chat-bot/bot"
 )
 
@@ -345,7 +346,7 @@ func deploy(command *bot.Cmd) (msg string, err error) {
 		case "-d", "--delete":
 			// Delete deployment project
 			if len(command.Args) != 3 {
-				writeLog(userid, fmt.Sprintf(missingFlagResponse_log, "Delete")
+				writeLog(userid, fmt.Sprintf(missingFlagResponse_log, "Delete"))
 				fmt.Printf(missingFlagResponse, getTime(), "Delete")
 				return fmt.Sprintf(missingFlagResponse, getTime(), "Delete"), nil
 			}
@@ -436,6 +437,13 @@ func deploy(command *bot.Cmd) (msg string, err error) {
 			fmt.Printf(deploymentResponse, getTime(), proname, version, "production")
 			return fmt.Sprintf(okResponse, getTime(), output), nil
 	}
+	return "", nil
+}
+
+//------------------------------------------------------------------------
+func try(command *bot.Cmd) (msg string, err error) {
+	bot.SendMessage(telegram.TBot, command.Channel, "Try of command message", command.User)
+	return "", nil
 }
 
 //------------------------------------------------------------------------
@@ -469,6 +477,11 @@ func init() {
 		"Info Telegram integration",
 		"",
 		info)
+	bot.RegisterCommand(
+		"try",
+		"Try Telegram integration",
+		"",
+		try)
 }
 
 // Func map file roles of user (file .json) 
