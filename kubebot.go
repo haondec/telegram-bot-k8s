@@ -40,36 +40,53 @@ const (
 	okResponse			string = "[%s]\n%s\n"
 	deploymentResponse_log		string = "Deploy project: %s - version: %s - env: %s."
 	deploymentResponse		string = "[%s] Deploy project: %s - version: %s - env: %s.\n"
+	updateResponse_log		string = "Update project: %s - version: %s - env: %s."
+	updateResponse			string = "[%s] Update project: %s - version: %s - env: %s.\n"
 	
 	missingFlagResponse_log		string = "Command %s missing flag."
 	missingFlagResponse		string = "[%s] Command %s missing flag."
 
 	// Declare role level
-	rolelv3			 string = "projectManager"
-	rolelv2			 string = "developer"
-	rolelv1			 string = "guest"
+	rolelv3			string = "projectManager"
+	rolelv2			string = "developer"
+	rolelv1			string = "guest"
 
 	// Format
-	timeFM			 string = time.RFC1123Z
-
+	timeFM			string = time.RFC1123Z
+	
+	// Version
+	defaultTag		string = "latest"
+	defaultEnv		string = "prod"		//production. Will update "test"
+	
 	// Deploy help
 	deploy_help		 string = `[%s]
 Usage: /deploy [OPTION]... [PROJECT NAME] [ENVIROMENT]
 Deploy pod, service or deployment on production or other env.
 Arguments support.
-    -h, --help             show help using
-    -s, --show             show list project
-    [Project name] [ENV]   /deploy projectA prod`
+	-h, --help		show help using
+	-s, --show		show list project
+	[Project name] [ENV]	/deploy projectA prod`
 
 	// Help bot
 	bot_help		 string = `[%s]
 @Telegram bot communicate which kubernetes - hcmus
-@Support: /help             Get user-id, info command and support
-          /deploy           Deploy production, /deploy -h: get more
-          /kubectl          All command kubectl support api 1.24
+@Support: /help			Get user-id, info command and support
+	  /deploy		Deploy production, /deploy -h: get more
+	  /kubectl		All command kubectl support api 1.24
 
 Your id telegram: %s
 Contact Sysadmin/ProjectManager to authorize user`
+	
+	// Update help
+	update_help		string = `[%s]
+Usage: /update [OPTION]... [PROJECT NAME] [ENVIROMENT]
+Arguments support.
+	-h, --help		show help using
+	-s, --show		show list project
+	[Project name] [ENV]	/update projectA prod
+				Default tag:latest
+				/update projectA
+				Default env: production`
 )
 
 // Define var: mapping role <-> user
@@ -343,7 +360,7 @@ func deploy(command *bot.Cmd) (msg string, err error) {
 			}
 			output = fmt.Sprintf(output, cnt)
 			return fmt.Sprintf(okResponse, getTime(), output), nil
-		case "-d", "--delete":
+		case "-d", "--delete", "-c", "--cancel":
 			// Delete deployment project
 			if len(command.Args) != 3 {
 				writeLog(userid, fmt.Sprintf(missingFlagResponse_log, "Delete"))
@@ -355,16 +372,12 @@ func deploy(command *bot.Cmd) (msg string, err error) {
 			check := false
 			number := 0
 			// Unknown flag
-			if len(command.Args) < 2 {
-				number = 0
+			if len(command.Args) < 2 && len(command.Args) == 3 {
+				number = len(command.Args) - 1
 				check = true
 			}
 			if len(command.Args) > 4 {
 				number = 4
-				check = true
-			}
-			if len(command.Args) == 3 {
-				number = 2
 				check = true
 			}
 			
@@ -402,7 +415,7 @@ func deploy(command *bot.Cmd) (msg string, err error) {
 			// This version support only flag env: production or prod
 			check	= false
 			number	= len(command.Args) 
-			version	:= "latest"
+			version	:= defaultTag
 			env	:= command.Args[number - 1]
 			_, exist := depcmd["environment"][env]
 			if exist {
@@ -442,7 +455,143 @@ func deploy(command *bot.Cmd) (msg string, err error) {
 
 //------------------------------------------------------------------------
 func try(command *bot.Cmd) (msg string, err error) {
-	bot.SendMessage(telegram.TBot, command.Channel, "Try of command message", command.User)
+	bot.SendMessage(telegram.TBot, command.Channel, "Try of command message.\nNice to meet you.", command.User)
+	return "", nil
+}
+
+//------------------------------------------------------------------------
+func update(command *bot.Cmd) (msg string, err error) {
+	userid := command.User.ID
+
+	// Write log recv command
+        writeLog(userid, "Receive command Update.")
+
+        // Get role
+        kb_main.roles = rolemap(os.Getenv(telegramRolesLabel))
+        rls, exist := kb_main.roles[userid]
+
+        // Checking authorized user
+        if !exist {
+                writeLog(userid, unAuthorizedUserResponse_log)
+                fmt.Printf(unAuthorizedUserResponse, getTime())
+                return fmt.Sprintf(unAuthorizedUserResponse, getTime()), nil
+        }
+
+        // Only /update
+        if len(command.Args) < 1 {
+                // Show help using
+                return fmt.Sprintf(update_help, getTime()), nil
+        }
+
+        // if not Project Manager. Do nothing.
+        if rls != rolelv3 {
+                writeLog(userid, fmt.Sprintf(notAllowCommandResponse_log, rls, "Update " + command.Args[0]))
+                fmt.Printf(notAllowCommandResponse, getTime(), rls, "Update " + command.Args[0])
+                return fmt.Sprintf(notAllowCommandResponse, getTime(), rls, "Update " + command.Args[0]), nil
+        }
+
+        output := ""
+	switch command.Args[0] {
+		case "-h", "--help":
+                        // Show help using
+                        return fmt.Sprintf(deploy_help, getTime()), nil
+                case "-s", "--show":
+                        // Show list project
+                        files, err := ioutil.ReadDir(os.Getenv(telegramProjectLabel))
+                        output = "All project list bellow [Total %d]:\n"
+                        cnt := 0
+                        if err != nil {
+                                output = fmt.Sprintf(output, cnt)
+                                return fmt.Sprintf(okResponse, getTime(), output), nil
+                        }
+                        for _, f := range files {
+                                if f.IsDir() {
+                                        output += f.Name() + "\n"
+                                        cnt++
+                                }
+                        }
+                        output = fmt.Sprintf(output, cnt)
+                        return fmt.Sprintf(okResponse, getTime(), output), nil
+		default:
+			check := false
+			number := 0
+			if len(command.Args) > 2 {
+				check = true
+				number = len(command.Args) - 1
+			}
+			
+			if check {
+                                writeLog(userid, fmt.Sprintf(forbiddenFlagResponse_log, command.Args[number]))
+                                fmt.Printf(forbiddenFlagResponse, getTime(), command.Args[number])
+                                return fmt.Sprintf(forbiddenFlagResponse, getTime(), command.Args[number]), nil
+                        }
+			
+			// Project not found
+                        proname := command.Args[0]
+                        check = false
+                        files, err := ioutil.ReadDir(os.Getenv(telegramProjectLabel))
+                        if err != nil {
+                                writeLog(userid, fmt.Sprintf(forbiddenProjectResponse_log, proname))
+                                fmt.Printf(forbiddenProjectResponse, getTime, proname)
+                                return fmt.Sprintf(forbiddenProjectResponse, getTime, proname), nil
+                        }
+                         
+                        // Find project
+                        for _, f := range files {
+                                if f.IsDir() && f.Name() == proname {
+                                        check = true
+                                        break
+                                }
+                        }       
+                         
+                        // Project not found
+                        if check == false {
+                                writeLog(userid, fmt.Sprintf(forbiddenProjectResponse_log, proname))
+                                fmt.Printf(forbiddenProjectResponse, getTime(), proname)
+                                return fmt.Sprintf(forbiddenProjectResponse, getTime(), proname), nil
+                        }
+
+			// This version support only flag env: production or prod
+                        check   = false
+                        number  = len(command.Args)
+			// Version: default - latest
+                        version := defaultTag
+			if len(command.Args) == 2 {
+				_, exist := depcmd["enviroment"][command.Args[1]]
+				if exist == false {
+					number = 1
+					check = true
+				}
+			} else {
+				// Default env is prod|production
+			}
+
+                        // Invalid flag
+                        if check {
+                                writeLog(userid, fmt.Sprintf(forbiddenFlagResponse_log, command.Args[number]))
+                                fmt.Printf(forbiddenFlagResponse, getTime(), command.Args[number])
+                                return fmt.Sprintf(forbiddenFlagResponse, getTime(), command.Args[number]), nil
+                        }
+			
+			//############Delete
+			delete_script := validatePath(os.Getenv(telegramProjectLabel)) + proname + "/" + "deploy_script.sh"
+			kube_command := []string{delete_script}
+			pipe_stdin := []string{"delete", version}
+			output = "#Delete output:\n" +  execute_pipe(pipe_stdin, "sh", kube_command...)
+			
+                        //############Deploy project
+                        // Now support only env: prod
+//                      path := validatePath(os.Getenv(telegramProjectLabel)) + proname + "/" + proname + "_prod.yaml"
+                        deploy_script := validatePath(os.Getenv(telegramProjectLabel)) + proname + "/" + "deploy_script.sh"
+                        kube_command = []string{deploy_script}
+//                      pipe_stdin := []string{path, version}
+			pipe_stdin = []string{"deploy", version}
+                        output += ("\n#Deploy output: " + execute_pipe(pipe_stdin, "sh", kube_command...))
+                        writeLog(userid, fmt.Sprintf(updateResponse_log, proname, version, "production"))
+                        fmt.Printf(updateResponse, getTime(), proname, version, "production")
+                        return fmt.Sprintf(okResponse, getTime(), output), nil
+		
+	}
 	return "", nil
 }
 

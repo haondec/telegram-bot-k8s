@@ -36,7 +36,6 @@ func stringToMap(s string, sep string) map[string]bool {
 	}
 
 	return m
-
 }
 
 // Format filename
@@ -46,6 +45,7 @@ func fmFileName(fn string) string {
 }
 
 // Format json message
+// Using append file, auto new line when add an message
 func fmJsonMessage(str string) string {
 	str = strings.Replace(str, "\"id\":", "\n\t\"id\":", -1)
 	str = strings.Replace(str, "\"userid\":", "\n\t\"userid\":", -1)
