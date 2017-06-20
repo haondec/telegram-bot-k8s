@@ -42,16 +42,50 @@ const (
 	deploymentResponse		string = "[%s] Deploy project: %s - version: %s - env: %s.\n"
 	updateResponse_log		string = "Update project: %s - version: %s - env: %s."
 	updateResponse			string = "[%s] Update project: %s - version: %s - env: %s.\n"
+
+	errorConfigFile_log		string = "Project: %s. Error config file: %s"
+	errorConfigFile			string = "[%s] Project: %s. Error config file: %s\n"
 	
+	errorInfoFile_log		string = "Project: %s. Reading info file error."
+	errorInfoFile			string = "[%s] Project: %s. Reading info file error.\n"
+	
+	errorNoState_log		string = "Project: %s. Error missing \"%s\" state on info file."
+	errorNoState			string = "[%s] Project: %s. Error missing \"%s\" state on info file.\n"
+	
+	errorListTag_log		string = "Project: %s. Error fetch all tag: %s."
+	errorListTag			string = "[%s] Project: %s. Error fetch all tag: %s.\n"
+
+	errorImageNotFound_log		string = "Project: %s. Image \"%s\" not found."
+	errorImageNotFound		string = "[%s] Project: %s. Image \"%s\" not found.\n"
+	
+	errorSaveInfo_log		string = "Project: %s. Error save info."
+	errorSaveInfo			string = "[%s] Project: %s. Error save info.\n"
+	errorSaveInfoResponse		string = "Error save info.\n"
+
 	missingFlagResponse_log		string = "Command %s missing flag."
 	missingFlagResponse		string = "[%s] Command %s missing flag."
+
+	// Show flag
+	showFlag_v1		string = "%d. %s\n"
+	showFlag_v2		string = "%d. %s\n   (Error config file: %s)\n"
+
+	// Path yaml, script, info
+	// dir-project/project-name/peoject-name_env.yaml
+	// need validatePath dir-project
+	pathYaml		string = "%s%s/%s_%s.yaml"
+	pathScript		string = "%s%s/%s_%s.sh"
+	pathInfo		string = "%s%s/%s_%s.json"
+
+	// Target script
+	targetDeploy		string = "deploy"
+	targetDelete		string = "delete"
 
 	// Declare role level
 	rolelv3			string = "projectManager"
 	rolelv2			string = "developer"
 	rolelv1			string = "guest"
 
-	// Format
+	// Format time
 	timeFM			string = time.RFC1123Z
 	
 	// Version
@@ -352,10 +386,25 @@ func deploy(command *bot.Cmd) (msg string, err error) {
 				output = fmt.Sprintf(output, cnt)
 				return fmt.Sprintf(okResponse, getTime(), output), nil
 			}
+
+			dir_parent := validatePath(os.Getenv(telegramProjectLabel))
+			// This version only support production env
+			env := defaultEnv
 			for _, f := range files {
 				if f.IsDir() {
-					output += f.Name() + "\n"
+					// Increase count
 					cnt++
+					// Checking file yaml, sh
+					f_yaml := fmt.Sprintf(pathYaml, dir_parent, f.Name(), f.Name(), env)
+					f_script := fmt.Sprintf(pathScript, dir_parent, f.Name(), f.Name(), env)
+					lFile := []string{f_yaml, f_script}
+
+					rs, c := checkConfigFile(lFile, ",")
+					if c {
+						output += fmt.Sprintf(showFlag_v1, cnt, f.Name())
+					} else {
+						output += fmt.Sprintf(showFlag_v2, cnt, f.Name(), rs)
+					}
 				}
 			}
 			output = fmt.Sprintf(output, cnt)
@@ -438,14 +487,26 @@ func deploy(command *bot.Cmd) (msg string, err error) {
 				return fmt.Sprintf(forbiddenFlagResponse, getTime(), command.Args[number]), nil
 			}
 			
-			// Deploy project
-			// Now support only env: prod
-//			path := validatePath(os.Getenv(telegramProjectLabel)) + proname + "/" + proname + "_prod.yaml"	
-			deploy_script := validatePath(os.Getenv(telegramProjectLabel)) + proname + "/" + "deploy_script.sh"
-			kube_command := []string{deploy_script}
-//			pipe_stdin := []string{path, version}
-			pipe_stdin := []string{version}
+			//############ Deploy project
+			// Now support only env:prod
+			dir_parent := validatePath(os.Getenv(telegramProjectLabel))
+			script := fmt.Sprintf(pathScript, dir_parent, proname, proname, env)
+			yaml := fmt.Sprintf(pathYaml, dir_parent, proname, proname, env)
+			info := fmt.Sprintf(pathInfo, dir_parent, proname, proname, env)
+			lFile := []string{yaml, script, info}
+
+			// Check file script, yaml, info
+			rs, c := checkConfigFile(lFile, ",")
+			if c == false {
+				writeLog(userid, fmt.Sprintf(errorConfigFile_log, proname, rs))
+				fmt.Printf(errorConfigFile, getTime(), proname, rs)
+				return fmt.Sprintf(errorConfigFile, getTime(), proname, rs), nil
+			}
+
+			kube_command := []string{script}
+			pipe_stdin := []string{targetDeploy, version}
 			output = execute_pipe(pipe_stdin, "sh", kube_command...)
+
 			writeLog(userid, fmt.Sprintf(deploymentResponse_log, proname, version, "production"))
 			fmt.Printf(deploymentResponse, getTime(), proname, version, "production")
 			return fmt.Sprintf(okResponse, getTime(), output), nil
@@ -496,7 +557,7 @@ func update(command *bot.Cmd) (msg string, err error) {
                         // Show help using
                         return fmt.Sprintf(deploy_help, getTime()), nil
                 case "-s", "--show":
-                        // Show list project
+			// Show list project
                         files, err := ioutil.ReadDir(os.Getenv(telegramProjectLabel))
                         output = "All project list bellow [Total %d]:\n"
                         cnt := 0
@@ -504,13 +565,28 @@ func update(command *bot.Cmd) (msg string, err error) {
                                 output = fmt.Sprintf(output, cnt)
                                 return fmt.Sprintf(okResponse, getTime(), output), nil
                         }
+
+                        dir_parent := validatePath(os.Getenv(telegramProjectLabel))
+                        // This version only support production env
+                        env := defaultEnv
                         for _, f := range files {
                                 if f.IsDir() {
-                                        output += f.Name() + "\n"
+                                        // Increase count
                                         cnt++
-                                }
+                                        // Checking file yaml, sh
+                                        f_yaml := fmt.Sprintf(pathYaml, dir_parent, f.Name(), f.Name(), env)
+                                        f_script := fmt.Sprintf(pathScript, dir_parent, f.Name(), f.Name(), env)
+                                        lFile := []string{f_yaml, f_script}
+
+                                        rs, c := checkConfigFile(lFile, ",")
+                                        if c {
+                                                output += fmt.Sprintf(showFlag_v1, cnt, f.Name())
+                                        } else {
+                                                output += fmt.Sprintf(showFlag_v2, cnt, f.Name(), rs)
+                                        }
+                                }               
                         }
-                        output = fmt.Sprintf(output, cnt)
+                        output = fmt.Sprintf(output, cnt) 
                         return fmt.Sprintf(okResponse, getTime(), output), nil
 		default:
 			check := false
@@ -554,39 +630,99 @@ func update(command *bot.Cmd) (msg string, err error) {
 			// This version support only flag env: production or prod
                         check   = false
                         number  = len(command.Args)
-			// Version: default - latest
-                        version := defaultTag
+
 			if len(command.Args) == 2 {
 				_, exist := depcmd["enviroment"][command.Args[1]]
 				if exist == false {
 					number = 1
 					check = true
 				}
-			} else {
-				// Default env is prod|production
 			}
-
+			
                         // Invalid flag
                         if check {
                                 writeLog(userid, fmt.Sprintf(forbiddenFlagResponse_log, command.Args[number]))
                                 fmt.Printf(forbiddenFlagResponse, getTime(), command.Args[number])
                                 return fmt.Sprintf(forbiddenFlagResponse, getTime(), command.Args[number]), nil
-                        }
+                        }		
 			
-			//############Delete
-			delete_script := validatePath(os.Getenv(telegramProjectLabel)) + proname + "/" + "deploy_script.sh"
-			kube_command := []string{delete_script}
-			pipe_stdin := []string{"delete", version}
+			// Version: default - latest
+                        // This version support only production|prod
+                        version := defaultTag
+                        env := defaultEnv
+			dir_parent := validatePath(os.Getenv(telegramProjectLabel))
+			script := fmt.Sprintf(pathScript, dir_parent, proname, proname, env)
+			yaml := fmt.Sprintf(pathYaml, dir_parent, proname, proname, env)
+			info := fmt.Sprintf(pathYaml, dir_parent, proname, proname, env)
+			kube_command := []string{script}
+			lFile := []string{yaml, script, info}
+
+			// Check file script, yaml, info
+                        rs, c := checkConfigFile(lFile, ",")
+                        if c == false {
+                                writeLog(userid, fmt.Sprintf(errorConfigFile_log, proname, rs))
+                                fmt.Printf(errorConfigFile, getTime(), proname, rs)
+                                return fmt.Sprintf(errorConfigFile, getTime(), proname, rs), nil
+                        }
+
+			// Read info
+			ain, err := getInfo(info)
+			if err != nil {
+				writeLog(userid, fmt.Sprintf(errorInfoFile_log, proname))
+                                fmt.Printf(errorInfoFile, getTime(), proname)
+                                return fmt.Sprintf(errorInfoFile, getTime(), proname), nil	
+			}
+
+			// Get current info
+			in_Current, check := getCurrent(ain)
+			if check == false {
+				writeLog(userid, fmt.Sprintf(errorNoState_log, proname, info_TypeCurrent))
+                                fmt.Printf(errorNoState, getTime(), proname, info_TypeCurrent)
+                                return fmt.Sprintf(errorNoState, getTime(), proname, info_TypeCurrent), nil
+			}
+
+			image := in_Current.Name
+			
+			ats, err := getAllTags(trueRepo(image))
+			if err != nil {
+				writeLog(userid, fmt.Sprintf(errorListTag_log, proname, image))
+				fmt.Printf(errorListTag, getTime(), proname, image)
+				return fmt.Sprintf(errorListTag, getTime(), proname, image), nil
+			}
+
+			if ats[0].Detail == dt_ImageNotFound {
+				writeLog(userid, fmt.Sprintf(errorImageNotFound_log, proname, image))
+				fmt.Printf(errorImageNotFound, getTime(), proname, image)
+				return fmt.Sprintf(errorImageNotFound, getTime(), proname, image), nil
+			}
+
+			b1, b2 := findTag(ats, in_Current.Tag, in_Current.Id)
+			if b1 && b2 {
+				fmt.Println("fuking")
+			}
+
+			//############ Delete
+			// With delete no need specific image and version
+			pipe_stdin := []string{targetDelete, image, version}
 			output = "#Delete output:\n" +  execute_pipe(pipe_stdin, "sh", kube_command...)
 			
-                        //############Deploy project
-                        // Now support only env: prod
-//                      path := validatePath(os.Getenv(telegramProjectLabel)) + proname + "/" + proname + "_prod.yaml"
-                        deploy_script := validatePath(os.Getenv(telegramProjectLabel)) + proname + "/" + "deploy_script.sh"
-                        kube_command = []string{deploy_script}
-//                      pipe_stdin := []string{path, version}
-			pipe_stdin = []string{"deploy", version}
-                        output += ("\n#Deploy output: " + execute_pipe(pipe_stdin, "sh", kube_command...))
+                        //############ Deploy project
+			pipe_stdin = []string{targetDeploy, image, version}
+                        output += ("\n#Deploy output:\n" + execute_pipe(pipe_stdin, "sh", kube_command...))
+			
+			// Update info
+			newid := getTagId(ats, version)
+			new_Current := Info{info_TypeCurrent, image, version, newid}
+			applyCurrent(ain, new_Current)
+			applyRollback(ain, in_Current)
+			err = saveInfo(info, ain)
+			if err != nil {
+				writeLog(userid, fmt.Sprintf(errorSaveInfo_log, proname))
+				fmt.Printf(errorSaveInfo, getTime(), proname)
+				bot.SendMessage(telegram.TBot, command.Channel, errorSaveInfoResponse, command.User)
+			}
+
+			// Output return
                         writeLog(userid, fmt.Sprintf(updateResponse_log, proname, version, "production"))
                         fmt.Printf(updateResponse, getTime(), proname, version, "production")
                         return fmt.Sprintf(okResponse, getTime(), output), nil
