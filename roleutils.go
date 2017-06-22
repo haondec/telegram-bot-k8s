@@ -17,7 +17,7 @@ func (p Claim) toString() string {
 }
 
 func toJson(p interface{}) string {
-    bytes, err := json.Marshal(p)
+    bytes, err := json.MarshalIndent(&p, "", "\t")
     if err != nil {
         fmt.Println(err.Error())
 //        os.Exit(1)

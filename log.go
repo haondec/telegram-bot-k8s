@@ -44,17 +44,6 @@ func fmFileName(fn string) string {
 	return strings.ToLower(fn)
 }
 
-// Format json message
-// Using append file, auto new line when add an message
-func fmJsonMessage(str string) string {
-	str = strings.Replace(str, "\"id\":", "\n\t\"id\":", -1)
-	str = strings.Replace(str, "\"userid\":", "\n\t\"userid\":", -1)
-	str = strings.Replace(str, "\"date\":", "\n\t\"date\":", -1)
-	str = strings.Replace(str, "\"message\":", "\n\t\"message\":", -1)
-	str = strings.Replace(str, "\"}", "\"\n}", -1)
-	return str
-}
-
 // Append file
 func appendFile(str string) {
 	if lcfg_main.log_count >= lcfg_main.log_count_max {
@@ -86,13 +75,13 @@ func appendFile(str string) {
 	}
 	
 	if commaCheck {
-		if _, err = f.WriteString(",\n" + fmJsonMessage(str)); err != nil {
+		if _, err = f.WriteString(",\n" + str); err != nil {
 			panic(err)
 			f.Close()
 			return
 		}
 	} else {
-		if _, err = f.WriteString(fmJsonMessage(str)); err != nil {
+		if _, err = f.WriteString(str); err != nil {
                         panic(err)
 			f.Close()
                         return
@@ -122,6 +111,6 @@ func writeLog(uid string, str string) {
 	logjs.Date 	= time
 	logjs.Message 	= str
 
-	mesjs, _ := json.Marshal(logjs)
+	mesjs, _ := json.MarshalIndent(logjs, "", "\t")
 	appendFile(string(mesjs))
 }

@@ -38,10 +38,13 @@ const (
 	notAllowCommandResponse		string = "[%s]\n[%s] Not allow to run \"%s\" command.\nPermission denied.\n"
 	notAllowCommandResponse_log	string = "Not allow to run: %s command.Permission denied."
 	okResponse			string = "[%s]\n%s\n"
-	deploymentResponse_log		string = "Deploy project: %s - version: %s - env: %s."
-	deploymentResponse		string = "[%s] Deploy project: %s - version: %s - env: %s.\n"
-	updateResponse_log		string = "Update project: %s - version: %s - env: %s."
-	updateResponse			string = "[%s] Update project: %s - version: %s - env: %s.\n"
+	deploymentResponse_log		string = "Deploy project:%s - version:%s - env:%s."
+	deploymentResponse		string = "[%s] Deploy project:%s - version:%s - env:%s.\n"
+	updateResponse_log		string = "Update project:%s - version:%s - env:%s."
+	updateResponse			string = "[%s] Update project:%s - version:%s - env:%s.\n"
+
+	infoReceiveCommand_log		string = "Receive command -%s-."
+	infoReceiveCommand		string = "[%s] Receive command -%s-.\n"
 
 	errorConfigFile_log		string = "Project: %s. Error config file: %s"
 	errorConfigFile			string = "[%s] Project: %s. Error config file: %s\n"
@@ -49,25 +52,37 @@ const (
 	errorInfoFile_log		string = "Project: %s. Reading info file error."
 	errorInfoFile			string = "[%s] Project: %s. Reading info file error.\n"
 	
-	errorNoState_log		string = "Project: %s. Error missing \"%s\" state on info file."
-	errorNoState			string = "[%s] Project: %s. Error missing \"%s\" state on info file.\n"
+	errorNoState_log		string = "Project: %s. Error missing -%s- state on info file."
+	errorNoState			string = "[%s] Project: %s. Error missing -%s- state on info file.\n"
 	
 	errorListTag_log		string = "Project: %s. Error fetch all tag: %s."
 	errorListTag			string = "[%s] Project: %s. Error fetch all tag: %s.\n"
 
-	errorImageNotFound_log		string = "Project: %s. Image \"%s\" not found."
-	errorImageNotFound		string = "[%s] Project: %s. Image \"%s\" not found.\n"
+	errorImageNotFound_log		string = "Project: %s. Image -%s- not found."
+	errorImageNotFound		string = "[%s] Project: %s. Image -%s- not found.\n"
+	
+	errorTagNotFound_log		string = "Project: %s. Tag -%s- not found."
+	errorTagNotFound		string = "[%s] Project: %s. Tag -%s- not found.\n"
 	
 	errorSaveInfo_log		string = "Project: %s. Error save info."
 	errorSaveInfo			string = "[%s] Project: %s. Error save info.\n"
 	errorSaveInfoResponse		string = "Error save info.\n"
 
-	missingFlagResponse_log		string = "Command %s missing flag."
-	missingFlagResponse		string = "[%s] Command %s missing flag."
+	infoAlreadyLatest_log		string = "Update project: %s. You are already latest/newest. Up to: -%s- is the same with current state."
+	infoAlreadyLatest           	string = "[%s] Update project: %s. You are already latest/newest. Up to: -%s- is the same with current state.\n"
 
-	// Show flag
+	infoCancelTask_log		string = "Cancel task -%s-."
+	infoCancelTask			string = "[%s] Cancel task -%s-.\n"
+
+	infoCompleteTask_log		string = "Complete task -%s-."
+	infoCompleteTask		string = "[%s] Complete task -%s-.\n"
+
+	missingFlagResponse_log		string = "Command %s missing flag."
+	missingFlagResponse		string = "[%s] Command %s missing flag.\n"
+
+	// Show flag. Checking config file
 	showFlag_v1		string = "%d. %s\n"
-	showFlag_v2		string = "%d. %s\n   (Error config file: %s)\n"
+	showFlag_v2		string = "%d. %s\n   (Error/Missing config file: %s)\n"
 
 	// Path yaml, script, info
 	// dir-project/project-name/peoject-name_env.yaml
@@ -291,7 +306,9 @@ func kubectl(command *bot.Cmd) (msg string, err error) {
 //	fmt.Printf("This is realname: %s\n", command.User.RealName)
 	
 	// Write log recv command
-	writeLog(userid, "Receive command kubectl.")
+	this_task := "Kubectl"
+	writeLog(userid, fmt.Sprintf(infoReceiveCommand_log, this_task))
+	fmt.Printf(infoReceiveCommand, getTime(), this_task)
 
 	// Get role of user
 	kb_main.roles = rolemap(os.Getenv(telegramRolesLabel))
@@ -344,8 +361,10 @@ func kubectl(command *bot.Cmd) (msg string, err error) {
 func deploy(command *bot.Cmd) (msg string, err error) {
 	userid := command.User.ID
 	
-	// Write log recv command 
-        writeLog(userid, "Receive command deploy.")
+	// Write log recv command
+	this_task := "Deploy"
+        writeLog(userid, fmt.Sprintf(infoReceiveCommand_log, this_task))
+	fmt.Printf(infoReceiveCommand, getTime(), this_task)
 
 	// Get role
 	kb_main.roles = rolemap(os.Getenv(telegramRolesLabel))
@@ -376,7 +395,10 @@ func deploy(command *bot.Cmd) (msg string, err error) {
 	switch command.Args[0] {
 		case "-h", "--help":
 			// Show help using
-			return fmt.Sprintf(deploy_help, getTime()), nil
+			temp := fmt.Sprintf(infoCompleteTask, getTime(), this_task)
+			output = fmt.Sprintf(deploy_help, getTime())
+			fmt.Printf(temp)
+			return output, nil
 		case "-s", "--show":
 			// Show list project
 			files, err := ioutil.ReadDir(os.Getenv(telegramProjectLabel))
@@ -397,7 +419,8 @@ func deploy(command *bot.Cmd) (msg string, err error) {
 					// Checking file yaml, sh
 					f_yaml := fmt.Sprintf(pathYaml, dir_parent, f.Name(), f.Name(), env)
 					f_script := fmt.Sprintf(pathScript, dir_parent, f.Name(), f.Name(), env)
-					lFile := []string{f_yaml, f_script}
+					f_info := fmt.Sprintf(pathInfo, dir_parent, f.Name(), f.Name(), env)
+					lFile := []string{f_yaml, f_script, f_info}
 
 					rs, c := checkConfigFile(lFile, ",")
 					if c {
@@ -408,7 +431,10 @@ func deploy(command *bot.Cmd) (msg string, err error) {
 				}
 			}
 			output = fmt.Sprintf(output, cnt)
-			return fmt.Sprintf(okResponse, getTime(), output), nil
+			temp := fmt.Sprintf(infoCompleteTask, getTime(), this_task)
+			output = fmt.Sprintf(okResponse, getTime(), output)
+			fmt.Printf(temp)
+			return output, nil
 		case "-d", "--delete", "-c", "--cancel":
 			// Delete deployment project
 			if len(command.Args) != 3 {
@@ -463,8 +489,9 @@ func deploy(command *bot.Cmd) (msg string, err error) {
 
 			// This version support only flag env: production or prod
 			check	= false
-			number	= len(command.Args) 
-			version	:= defaultTag
+			number	= len(command.Args)
+			image	:= ""
+			version	:= ""
 			env	:= command.Args[number - 1]
 			_, exist := depcmd["environment"][env]
 			if exist {
@@ -503,9 +530,77 @@ func deploy(command *bot.Cmd) (msg string, err error) {
 				return fmt.Sprintf(errorConfigFile, getTime(), proname, rs), nil
 			}
 
-			kube_command := []string{script}
-			pipe_stdin := []string{targetDeploy, version}
-			output = execute_pipe(pipe_stdin, "sh", kube_command...)
+			// Read info from file
+                        ain, err := getInfo(info)
+                        if err != nil {
+                                writeLog(userid, fmt.Sprintf(errorInfoFile_log, proname))
+                                fmt.Printf(errorInfoFile, getTime(), proname)
+				fmt.Println(err.Error())
+                                return fmt.Sprintf(errorInfoFile, getTime(), proname), nil
+                        }
+			
+			// Get default
+			in_Default, check := getDefault(ain)
+			if check == true {
+				// Alway get image from default
+				image = in_Default.Name
+				// If Default tag dont specify, value will get by program
+				if in_Default.Tag == "" {
+					in_Default.Tag = defaultTag
+				}
+				// Only get default if user dont specify on command /deploy
+				if version == "" {
+					version = in_Default.Tag
+				}
+			} else {
+				writeLog(userid, fmt.Sprintf(errorNoState_log, proname, info_TypeDefault))
+                                fmt.Printf(errorNoState, getTime(), proname, info_TypeDefault)
+                                return fmt.Sprintf(errorNoState, getTime(), proname, info_TypeDefault), nil
+			}
+
+			// Handle tag list registry.hub.docker.com
+                        ats, err := getAllTags(trueRepo(image))
+                        if err != nil {
+                                writeLog(userid, fmt.Sprintf(errorListTag_log, proname, image))
+                                fmt.Printf(errorListTag, getTime(), proname, image)
+				fmt.Println(err.Error())
+                                return fmt.Sprintf(errorListTag, getTime(), proname, image), nil
+                        }
+
+                        // Checking image
+                        if ats[0].Detail == dt_ImageNotFound {
+                                writeLog(userid, fmt.Sprintf(errorImageNotFound_log, proname, image))
+                                fmt.Printf(errorImageNotFound, getTime(), proname, image)
+                                return fmt.Sprintf(errorImageNotFound, getTime(), proname, image), nil
+                        }
+
+                        // Cheking tag of image
+                        check = findTagName(ats, version)
+
+                        if check == false {
+                                version = image + ":" + version
+                                writeLog(userid, fmt.Sprintf(errorTagNotFound_log, proname, version))
+                                fmt.Printf(errorTagNotFound, getTime(), proname, version)
+                                return fmt.Sprintf(errorTagNotFound, getTime(), proname, version), nil
+                        }
+
+			//kube_command := []string{script}
+			//pipe_stdin := []string{targetDeploy, image, version}
+			//output = execute_pipe(pipe_stdin, "sh", kube_command...)
+			output = "ok"
+
+			// Update info
+                        newid := getTagId(ats, version)
+                        new_Current := Info{info_TypeCurrent, image, version, newid}
+                        ain = applyCurrent(ain, new_Current)
+                        ain = applyRollback(ain, new_Current)
+                        err = saveInfo(info, ain)
+			
+                        if err != nil {
+                                writeLog(userid, fmt.Sprintf(errorSaveInfo_log, proname))
+                                fmt.Printf(errorSaveInfo, getTime(), proname)
+                                bot.SendMessage(telegram.TBot, command.Channel, errorSaveInfoResponse, command.User)
+                        }
 
 			writeLog(userid, fmt.Sprintf(deploymentResponse_log, proname, version, "production"))
 			fmt.Printf(deploymentResponse, getTime(), proname, version, "production")
@@ -525,7 +620,9 @@ func update(command *bot.Cmd) (msg string, err error) {
 	userid := command.User.ID
 
 	// Write log recv command
-        writeLog(userid, "Receive command Update.")
+	this_task := "Update"
+        writeLog(userid, fmt.Sprintf(infoReceiveCommand_log, this_task))
+	fmt.Printf(infoReceiveCommand, getTime(), this_task)
 
         // Get role
         kb_main.roles = rolemap(os.Getenv(telegramRolesLabel))
@@ -576,7 +673,8 @@ func update(command *bot.Cmd) (msg string, err error) {
                                         // Checking file yaml, sh
                                         f_yaml := fmt.Sprintf(pathYaml, dir_parent, f.Name(), f.Name(), env)
                                         f_script := fmt.Sprintf(pathScript, dir_parent, f.Name(), f.Name(), env)
-                                        lFile := []string{f_yaml, f_script}
+					f_info := fmt.Sprintf(pathInfo, dir_parent, f.Name(), f.Name(), env)
+                                        lFile := []string{f_yaml, f_script, f_info}
 
                                         rs, c := checkConfigFile(lFile, ",")
                                         if c {
@@ -665,40 +763,75 @@ func update(command *bot.Cmd) (msg string, err error) {
                                 return fmt.Sprintf(errorConfigFile, getTime(), proname, rs), nil
                         }
 
-			// Read info
+			// Read info from file
 			ain, err := getInfo(info)
 			if err != nil {
 				writeLog(userid, fmt.Sprintf(errorInfoFile_log, proname))
                                 fmt.Printf(errorInfoFile, getTime(), proname)
                                 return fmt.Sprintf(errorInfoFile, getTime(), proname), nil	
 			}
-
+			
+			var image string
+			// Get update
+			in_Update, check := getUpdate(ain)
+			if check == true {
+				image = in_Update.Name
+				version = in_Update.Tag
+			}
+			
 			// Get current info
 			in_Current, check := getCurrent(ain)
-			if check == false {
+			if check == true {
+				if image == "" {
+					image = in_Current.Name
+				}
+				if version == "" {
+					version = defaultTag
+				}
+			} else {
 				writeLog(userid, fmt.Sprintf(errorNoState_log, proname, info_TypeCurrent))
-                                fmt.Printf(errorNoState, getTime(), proname, info_TypeCurrent)
-                                return fmt.Sprintf(errorNoState, getTime(), proname, info_TypeCurrent), nil
+				fmt.Printf(errorNoState, getTime(), proname, info_TypeCurrent)
+                               	return fmt.Sprintf(errorNoState, getTime(), proname, info_TypeCurrent), nil
 			}
-
-			image := in_Current.Name
 			
+			// Handle tag list registry.hub.docker.com
 			ats, err := getAllTags(trueRepo(image))
 			if err != nil {
 				writeLog(userid, fmt.Sprintf(errorListTag_log, proname, image))
 				fmt.Printf(errorListTag, getTime(), proname, image)
 				return fmt.Sprintf(errorListTag, getTime(), proname, image), nil
 			}
-
+			
+			// Checking image
 			if ats[0].Detail == dt_ImageNotFound {
 				writeLog(userid, fmt.Sprintf(errorImageNotFound_log, proname, image))
 				fmt.Printf(errorImageNotFound, getTime(), proname, image)
 				return fmt.Sprintf(errorImageNotFound, getTime(), proname, image), nil
 			}
+			
+			// Cheking tag of image
+			var b1, b2 bool
 
-			b1, b2 := findTag(ats, in_Current.Tag, in_Current.Id)
-			if b1 && b2 {
-				fmt.Println("fuking")
+			b1 = findTagName(ats, version)
+
+			if b1 == false {
+				version = image + ":" + version
+                                writeLog(userid, fmt.Sprintf(errorTagNotFound_log, proname, version))
+                                fmt.Printf(errorTagNotFound, getTime(), proname, version)
+                                return fmt.Sprintf(errorTagNotFound, getTime(), proname, version), nil
+			}
+
+			// Checking is the same with current
+			if image == in_Current.Name {
+				if version == in_Current.Tag {
+					_, b2 = findTag(ats, in_Current.Tag, in_Current.Id)
+					if b2 {
+						image = image + ":" + version + ":" + string(in_Current.Id)
+						writeLog(userid, fmt.Sprintf(infoAlreadyLatest_log, proname, image))
+						fmt.Printf(infoAlreadyLatest, getTime(), proname, image)
+						return fmt.Sprintf(infoAlreadyLatest, getTime(), proname, image), nil
+					}
+				}
 			}
 
 			//############ Delete
@@ -713,8 +846,8 @@ func update(command *bot.Cmd) (msg string, err error) {
 			// Update info
 			newid := getTagId(ats, version)
 			new_Current := Info{info_TypeCurrent, image, version, newid}
-			applyCurrent(ain, new_Current)
-			applyRollback(ain, in_Current)
+			ain = applyCurrent(ain, new_Current)
+			ain = applyRollback(ain, in_Current)
 			err = saveInfo(info, ain)
 			if err != nil {
 				writeLog(userid, fmt.Sprintf(errorSaveInfo_log, proname))
