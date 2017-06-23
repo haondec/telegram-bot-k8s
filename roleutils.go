@@ -48,3 +48,13 @@ func getClaims(fn string) []Claim {
     return c
 }
 
+// Func map file roles of user (file .json) 
+func rolemap(fn string) map[string]string {
+	claims := getClaims(fn)
+	var rm map[string]string
+	rm = make(map[string]string)
+	for _, p:= range claims {
+		rm[p.UserName] = p.Role
+	}
+	return rm
+}
