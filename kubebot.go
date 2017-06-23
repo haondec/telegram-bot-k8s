@@ -45,6 +45,9 @@ const (
 
 	updateResponse_log		string = "Update project: %s image:%s|version:%s|env:%s."
 	updateResponse			string = "- [%s]\nUpdate project: %s image:%s|version:%s|env:%s.\n"
+	
+	deleteResponse_log		string = "Delete/Cancel project:%s|env:%s. Completed."
+	deleteResponse			string = "- [%s]\nDelete/Cancel project:%s|env:%s. Completed.\n"
 
 	rollbackResponse_log		string = "Rollback project: %s image:%s|version:%s|env:%s."
 	rollbackResponse		string = "- [%s]\nRollback project: %s image:%s|version:%s|env:%s.\n"
@@ -445,6 +448,16 @@ func deploy(command *bot.Cmd) (msg string, err error) {
 			fmt.Printf(temp)
 			return output, nil
 		case "-d", "--delete", "-c", "--cancel":
+			check := false
+			number := 0
+			// Unknown flag
+			if len(command.Args) >= 4 {
+				number = len(command.Args) - 1
+				writeLog(userid, fmt.Sprintf(forbiddenFlagResponse_log, command.Args[number]))
+				fmt.Printf(forbiddenFlagResponse, getTime(), command.Args[number])
+				return fmt.Sprintf(forbiddenFlagResponse, getTime(), command.Args[number]), nil
+			}
+		
 			// Delete deployment project
 			if len(command.Args) != 3 {
 				writeLog(userid, fmt.Sprintf(missingFlagResponse_log, "Delete"))
@@ -452,13 +465,101 @@ func deploy(command *bot.Cmd) (msg string, err error) {
 				return fmt.Sprintf(missingFlagResponse, getTime(), "Delete"), nil
 			}
 			
+			// Project not found
+			proname := command.Args[0]
+			check = false
+			files, err := ioutil.ReadDir(os.Getenv(telegramProjectLabel))
+			if err != nil {
+				writeLog(userid, fmt.Sprintf(forbiddenProjectResponse_log, proname))
+				fmt.Printf(forbiddenProjectResponse, getTime, proname)
+                                return fmt.Sprintf(forbiddenProjectResponse, getTime, proname), nil
+			}
+			
+			// Find project
+			for _, f := range files {
+				if f.IsDir() && f.Name() == proname {
+					check = true
+					break
+				}
+			}
+			
+			// Project not found
+			if check == false {
+				writeLog(userid, fmt.Sprintf(forbiddenProjectResponse_log, proname))
+				fmt.Printf(forbiddenProjectResponse, getTime(), proname)
+				return fmt.Sprintf(forbiddenProjectResponse, getTime(), proname), nil
+			}
+		
+			//############ Delete/Cancel project
+			// Now support only env:prod
+			dir_parent := validatePath(os.Getenv(telegramProjectLabel))
+			script := fmt.Sprintf(pathScript, dir_parent, proname, proname, env)
+			yaml := fmt.Sprintf(pathYaml, dir_parent, proname, proname, env)
+			info := fmt.Sprintf(pathInfo, dir_parent, proname, proname, env)
+			lFile := []string{yaml, script, info}
+
+			// Check file script, yaml, info
+			rs, c := checkConfigFile(lFile, ",")
+			if c == false {
+				writeLog(userid, fmt.Sprintf(errorConfigFile_log, proname, rs))
+				fmt.Printf(errorConfigFile, getTime(), proname, rs)
+				return fmt.Sprintf(errorConfigFile, getTime(), proname, rs), nil
+			}
+
+			// Read info from file
+                        ain, err := getInfo(info)
+                        if err != nil {
+                                writeLog(userid, fmt.Sprintf(errorInfoFile_log, proname))
+                                fmt.Printf(errorInfoFile, getTime(), proname)
+				fmt.Println(err.Error())
+                                return fmt.Sprintf(errorInfoFile, getTime(), proname), nil
+                        }
+			
+			var image, version string
+			// Get default
+			in_Default, check := getDefault(ain)
+			if check == true {
+				// Alway get image from default
+				image = in_Default.Name
+				// If Default tag dont specify, value will get by program
+				if in_Default.Tag == "" {
+					in_Default.Tag = defaultTag
+				}
+				version = in_Default.Tag
+			} else {
+				writeLog(userid, fmt.Sprintf(errorNoState_log, proname, info_TypeDefault))
+                                fmt.Printf(errorNoState, getTime(), proname, info_TypeDefault)
+                                return fmt.Sprintf(errorNoState, getTime(), proname, info_TypeDefault), nil
+			}
+			
+			//############ Delete
+			// With delete no need specific image and version
+			pipe_stdin := []string{targetDelete, image, version}
+			kube_command := []string{script}
+			output = execute_pipe(pipe_stdin, "sh", kube_command...)
+			
+			// Update info
+			var ain_new []Info
+			ain_new := append(ain_new, in_Default)
+			err = saveInfo(info, ain)
+                        if err != nil {
+                                writeLog(userid, fmt.Sprintf(errorSaveInfo_log, proname))
+                                fmt.Printf(errorSaveInfo, getTime(), proname)
+                                bot.SendMessage(telegram.TBot, command.Channel, errorSaveInfoResponse, command.User)
+                        }
+
+			writeLog(userid, fmt.Sprintf(deleteResponse_log, proname, "production"))
+			temp := fmt.Sprintf(deleteResponse, getTime(), proname, "production")
+			fmt.Printf(temp)
+			return fmt.Sprintf(okResponse, getTime(), output) + temp, nil
 		default:
 			check := false
 			number := 0
 			// Unknown flag
 			if len(command.Args) < 2 && len(command.Args) == 3 {
-				number = len(command.Args) - 1
-				check = true
+				writeLog(userid, fmt.Sprintf(missingFlagResponse_log, "Deploy"))
+				fmt.Printf(missingFlagResponse, getTime(), "Deploy")
+				return fmt.Sprintf(missingFlagResponse, getTime(), "Deploy"), nil
 			}
 			if len(command.Args) > 4 {
 				number = 4
@@ -499,9 +600,9 @@ func deploy(command *bot.Cmd) (msg string, err error) {
 			// This version support only flag env: production or prod
 			check	= false
 			number	= len(command.Args)
-			image	:= ""
-			version	:= ""
+			var image, version string
 			env	:= command.Args[number - 1]
+		
 			_, exist := depcmd["environment"][env]
 			if exist {
 				if number == 4 {
@@ -600,7 +701,8 @@ func deploy(command *bot.Cmd) (msg string, err error) {
                                 fmt.Printf(errorTagNotFound, getTime(), proname, version)
                                 return fmt.Sprintf(errorTagNotFound, getTime(), proname, version), nil
                         }
-
+			
+			// Deploy execute
 			kube_command := []string{script}
 			pipe_stdin := []string{targetDeploy, image, version}
 			output = execute_pipe(pipe_stdin, "sh", kube_command...)
@@ -758,7 +860,9 @@ func update(command *bot.Cmd) (msg string, err error) {
 			}
 
 			if len(command.Args) == 1 {
-
+				writeLog(userid, fmt.Sprintf(missingFlagResponse_log, "Update"))
+				fmt.Printf(missingFlagResponse, getTime(), "Update")
+				return fmt.Sprintf(missingFlagResponse, getTime(), "Update"), nil
 			}
 			
                         // Invalid flag
@@ -1011,6 +1115,12 @@ func rollback(command *bot.Cmd) (msg string, err error) {
 				} else {
 					env = command.Args[len(command.Args) - 1]
 				}
+			}
+		
+			if len(command.Args) == 1 {
+				writeLog(userid, fmt.Sprintf(missingFlagResponse_log, "Rollback"))
+				fmt.Printf(missingFlagResponse, getTime(), "Rollback")
+				return fmt.Sprintf(missingFlagResponse, getTime(), "Rollback"), nil
 			}
 			
                         // Invalid flag
