@@ -738,7 +738,6 @@ func update(command *bot.Cmd) (msg string, err error) {
 			// This version support only flag env: production or prod
                         check   = false
                         number  = len(command.Args)
-
 			env := defaultEnv
 
 			if len(command.Args) == 2 {
@@ -825,9 +824,7 @@ func update(command *bot.Cmd) (msg string, err error) {
 			
 			// Cheking tag of image
 			var b1, b2 bool
-
 			b1 = findTagName(ats, version)
-
 			if b1 == false {
 				version = image + ":" + version
                                 writeLog(userid, fmt.Sprintf(errorTagNotFound_log, proname, version))
@@ -846,6 +843,231 @@ func update(command *bot.Cmd) (msg string, err error) {
 						return fmt.Sprintf(infoAlreadyLatest, getTime(), proname, image), nil
 					}
 				}
+			}
+
+			//############ Delete
+			// With delete no need specific image and version
+			pipe_stdin := []string{targetDelete, image, version}
+			output = "#Delete output:\n" +  execute_pipe(pipe_stdin, "sh", kube_command...)
+			
+                        //############ Deploy project
+			pipe_stdin = []string{targetDeploy, image, version}
+                        output += ("\n#Deploy output:\n" + execute_pipe(pipe_stdin, "sh", kube_command...))
+			
+			// Update info
+			newid := getTagId(ats, version)
+			new_Current := Info{info_TypeCurrent, image, version, newid}
+			ain = applyCurrent(ain, new_Current)
+			ain = applyRollback(ain, in_Current)
+			err = saveInfo(info, ain)
+			if err != nil {
+				writeLog(userid, fmt.Sprintf(errorSaveInfo_log, proname))
+				fmt.Printf(errorSaveInfo, getTime(), proname)
+				bot.SendMessage(telegram.TBot, command.Channel, errorSaveInfoResponse, command.User)
+			}
+
+			// Output return
+                        writeLog(userid, fmt.Sprintf(updateResponse_log, proname, version, "production"))
+                        fmt.Printf(updateResponse, getTime(), proname, version, "production")
+                        return fmt.Sprintf(okResponse, getTime(), output), nil
+		
+	}
+	return "", nil
+}
+
+//------------------------------------------------------------------------
+func rollback(command *bot.Cmd) (msg string, err error) {
+	userid := command.User.ID
+
+	// Write log recv command
+	this_task := "Rollback"
+        writeLog(userid, fmt.Sprintf(infoReceiveCommand_log, this_task))
+	fmt.Printf(infoReceiveCommand, getTime(), this_task)
+
+        // Get role
+        kb_main.roles = rolemap(os.Getenv(telegramRolesLabel))
+        rls, exist := kb_main.roles[userid]
+
+        // Checking authorized user
+        if !exist {
+                writeLog(userid, unAuthorizedUserResponse_log)
+                fmt.Printf(unAuthorizedUserResponse, getTime())
+                return fmt.Sprintf(unAuthorizedUserResponse, getTime()), nil
+        }
+
+        // Only /rollback
+        if len(command.Args) < 1 {
+                // Show help using
+                return fmt.Sprintf(update_help, getTime()), nil
+        }
+
+        // if not Project Manager. Do nothing.
+        if rls != rolelv3 {
+                writeLog(userid, fmt.Sprintf(notAllowCommandResponse_log, rls, "Rollback " + command.Args[0]))
+                fmt.Printf(notAllowCommandResponse, getTime(), rls, "Rollback " + command.Args[0])
+                return fmt.Sprintf(notAllowCommandResponse, getTime(), rls, "Rollback " + command.Args[0]), nil
+        }
+
+        output := ""
+	switch command.Args[0] {
+		case "-h", "--help":
+                        // Show help using
+                        return fmt.Sprintf(deploy_help, getTime()), nil
+                case "-s", "--show":
+			// Show list project
+                        files, err := ioutil.ReadDir(os.Getenv(telegramProjectLabel))
+                        output = "All project list bellow [Total %d]:\n"
+                        cnt := 0
+                        if err != nil {
+                                output = fmt.Sprintf(output, cnt)
+                                return fmt.Sprintf(okResponse, getTime(), output), nil
+                        }
+
+                        dir_parent := validatePath(os.Getenv(telegramProjectLabel))
+                        // This version only support production env
+                        env := defaultEnv
+                        for _, f := range files {
+                                if f.IsDir() {
+                                        // Increase count
+                                        cnt++
+                                        // Checking file yaml, sh
+                                        f_yaml := fmt.Sprintf(pathYaml, dir_parent, f.Name(), f.Name(), env)
+                                        f_script := fmt.Sprintf(pathScript, dir_parent, f.Name(), f.Name(), env)
+					f_info := fmt.Sprintf(pathInfo, dir_parent, f.Name(), f.Name(), env)
+                                        lFile := []string{f_yaml, f_script, f_info}
+
+                                        rs, c := checkConfigFile(lFile, ",")
+                                        if c {
+                                                output += fmt.Sprintf(showFlag_v1, cnt, f.Name())
+                                        } else {
+                                                output += fmt.Sprintf(showFlag_v2, cnt, f.Name(), rs)
+                                        }
+                                }               
+                        }
+                        output = fmt.Sprintf(output, cnt) 
+                        return fmt.Sprintf(okResponse, getTime(), output), nil
+		default:
+			check := false
+			number := 0
+			if len(command.Args) > 2 {
+				check = true
+				number = len(command.Args) - 1
+			}
+			
+			if check {
+                                writeLog(userid, fmt.Sprintf(forbiddenFlagResponse_log, command.Args[number]))
+                                fmt.Printf(forbiddenFlagResponse, getTime(), command.Args[number])
+                                return fmt.Sprintf(forbiddenFlagResponse, getTime(), command.Args[number]), nil
+                        }
+			
+			// Project not found
+                        proname := command.Args[0]
+                        check = false
+                        files, err := ioutil.ReadDir(os.Getenv(telegramProjectLabel))
+                        if err != nil {
+                                writeLog(userid, fmt.Sprintf(forbiddenProjectResponse_log, proname))
+                                fmt.Printf(forbiddenProjectResponse, getTime, proname)
+                                return fmt.Sprintf(forbiddenProjectResponse, getTime, proname), nil
+                        }
+                         
+                        // Find project
+                        for _, f := range files {
+                                if f.IsDir() && f.Name() == proname {
+                                        check = true
+                                        break
+                                }
+                        }       
+                         
+                        // Project not found
+                        if check == false {
+                                writeLog(userid, fmt.Sprintf(forbiddenProjectResponse_log, proname))
+                                fmt.Printf(forbiddenProjectResponse, getTime(), proname)
+                                return fmt.Sprintf(forbiddenProjectResponse, getTime(), proname), nil
+                        }
+
+			// This version support only flag env: production or prod
+                        check   = false
+                        number  = len(command.Args)
+
+			env := defaultEnv
+
+			if len(command.Args) == 2 {
+				_, exist := depcmd["environment"][command.Args[len(command.Args) - 1]]
+				if exist == false {
+					number = 1
+					check = true
+				} else {
+					env = command.Args[len(command.Args) - 1]
+				}
+			}
+			
+                        // Invalid flag
+                        if check {
+                                writeLog(userid, fmt.Sprintf(forbiddenFlagResponse_log, command.Args[number]))
+                                fmt.Printf(forbiddenFlagResponse, getTime(), command.Args[number])
+                                return fmt.Sprintf(forbiddenFlagResponse, getTime(), command.Args[number]), nil
+                        }
+
+			// Version: default - latest
+                        // This version support only production|prod
+			dir_parent := validatePath(os.Getenv(telegramProjectLabel))
+			script := fmt.Sprintf(pathScript, dir_parent, proname, proname, env)
+			yaml := fmt.Sprintf(pathYaml, dir_parent, proname, proname, env)
+			info := fmt.Sprintf(pathInfo, dir_parent, proname, proname, env)
+			kube_command := []string{script}
+			lFile := []string{yaml, script, info}
+
+			// Check file script, yaml, info
+                        rs, c := checkConfigFile(lFile, ",")
+                        if c == false {
+                                writeLog(userid, fmt.Sprintf(errorConfigFile_log, proname, rs))
+                                fmt.Printf(errorConfigFile, getTime(), proname, rs)
+                                return fmt.Sprintf(errorConfigFile, getTime(), proname, rs), nil
+                        }
+
+			// Read info from file
+			ain, err := getInfo(info)
+			if err != nil {
+				writeLog(userid, fmt.Sprintf(errorInfoFile_log, proname))
+                                fmt.Printf(errorInfoFile, getTime(), proname)
+				fmt.Println(err.Error())
+                                return fmt.Sprintf(errorInfoFile, getTime(), proname), nil	
+			}
+			
+			// Get rollback info
+			in_Rollback, check := getCurrent(ain)
+			if check == false {
+				writeLog(userid, fmt.Sprintf(errorNoState_log, proname, info_TypeRollback))
+				fmt.Printf(errorNoState, getTime(), proname, info_TypeRollback)
+                               	return fmt.Sprintf(errorNoState, getTime(), proname, info_TypeRollback), nil
+			}
+			
+			image := in_Rollback.Name
+			version := in_Rollback.Tag
+			
+			// Handle tag list registry.hub.docker.com
+			ats, err := getAllTags(trueRepo(image))
+			if err != nil {
+				writeLog(userid, fmt.Sprintf(errorListTag_log, proname, image))
+				fmt.Printf(errorListTag, getTime(), proname, image)
+				fmt.Println(err.Error())
+				return fmt.Sprintf(errorListTag, getTime(), proname, image), nil
+			}
+			
+			// Checking image
+			if ats[0].Detail == dt_ImageNotFound {
+				writeLog(userid, fmt.Sprintf(errorImageNotFound_log, proname, image))
+				fmt.Printf(errorImageNotFound, getTime(), proname, image)
+				return fmt.Sprintf(errorImageNotFound, getTime(), proname, image), nil
+			}
+			
+			// Cheking tag of image
+			check = findTagName(ats, version)
+			if check == false {
+				version = image + ":" + version
+                                writeLog(userid, fmt.Sprintf(errorTagNotFound_log, proname, version))
+                                fmt.Printf(errorTagNotFound, getTime(), proname, version)
+                                return fmt.Sprintf(errorTagNotFound, getTime(), proname, version), nil
 			}
 
 			//############ Delete
@@ -911,18 +1133,12 @@ func init() {
 		info)
 	bot.RegisterCommand(
 		"update",
-		"Try Telegram integration",
+		"Update Telegram integration",
 		"",
 		update)
-}
-
-// Func map file roles of user (file .json) 
-func rolemap(fn string) map[string]string {
-	claims := getClaims(fn)
-	var rm map[string]string
-	rm = make(map[string]string)
-	for _, p:= range claims {
-		rm[p.UserName] = p.Role
-	}
-	return rm
+	bot.RegisterCommand(
+		"rollback",
+		"Rollback Telegram integration",
+		"",
+		rollback)
 }
