@@ -157,6 +157,7 @@ func getInfo(fn string) (ain []Info, err error) {
 	if err != nil {
 		return ain, err
 	}
+
 	err = json.Unmarshal(raw, &ain)
 	return ain, err
 }

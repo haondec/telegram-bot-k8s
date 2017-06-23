@@ -27,58 +27,61 @@ const (
 	forbiddenFlagMessage		string = "%s - ⚠ Flag(s) %s forbidden\n"
 	forbiddenChannelResponse	string = "Sorry @%s, but I'm not allowed to run this command here :zipper_mouth_face:"
 	forbiddenCommandResponse	string = "Sorry @%s, but I cannot run this command."
-	forbiddenFlagResponse		string = "[%s]\nUnknown flag \"%s\".\nCancel task.\n"
+	forbiddenFlagResponse		string = "- [%s]\nUnknown flag: %s.\nCancel task.\n"
 	forbiddenFlagResponse_log	string = "Unknown flag: %s."
-	forbiddenProjectResponse	string = "[%s]\nProject \"%s\" not found.\nCancel task.\n"
+	forbiddenProjectResponse	string = "- [%s]\nProject: %s not found.\nCancel task.\n"
 	forbiddenProjectResponse_log	string = "Project: %s not found."
 	
 	// Using
-	unAuthorizedUserResponse	string = "[%s]\nUnauthorized user: %s.\nCancel task.\n"
+	unAuthorizedUserResponse	string = "- [%s]\nUnauthorized user: %s.\nCancel task.\n"
 	unAuthorizedUserResponse_log	string = "Unauthorized user.\n"
-	notAllowCommandResponse		string = "[%s]\n[%s] Not allow to run \"%s\" command.\nPermission denied.\n"
+	notAllowCommandResponse		string = "- [%s]\n[%s] Not allow to run -%s- command.\nPermission denied.\n"
 	notAllowCommandResponse_log	string = "Not allow to run: %s command.Permission denied."
-	okResponse			string = "[%s]\n%s\n"
-	deploymentResponse_log		string = "Deploy project:%s - version:%s - env:%s."
-	deploymentResponse		string = "[%s] Deploy project:%s - version:%s - env:%s.\n"
-	updateResponse_log		string = "Update project:%s - version:%s - env:%s."
-	updateResponse			string = "[%s] Update project:%s - version:%s - env:%s.\n"
+	okResponse			string = "- [%s]\n%s\n"
+	deploymentResponse_log		string = "Deploy project: %s image:%s|version:%s|env:%s."
+	deploymentResponse		string = "- [%s]\nDeploy project: %s image:%s|version:%s|env:%s.\n"
+	updateResponse_log		string = "Update project: %s image:%s|version:%s|env:%s."
+	updateResponse			string = "- [%s]\nUpdate project: %s image:%s|version:%s|env:%s.\n"
 
-	infoReceiveCommand_log		string = "Receive command -%s-."
-	infoReceiveCommand		string = "[%s] Receive command -%s-.\n"
+	infoReceiveCommand_log		string = "Receive command %s."
+	infoReceiveCommand		string = "- [%s]\nReceive command %s.\n"
 
 	errorConfigFile_log		string = "Project: %s. Error config file: %s"
-	errorConfigFile			string = "[%s] Project: %s. Error config file: %s\n"
+	errorConfigFile			string = "- [%s]\nProject: %s. Error config file: %s\n"
 	
 	errorInfoFile_log		string = "Project: %s. Reading info file error."
-	errorInfoFile			string = "[%s] Project: %s. Reading info file error.\n"
+	errorInfoFile			string = "- [%s]\nProject: %s. Reading info file error.\n"
 	
 	errorNoState_log		string = "Project: %s. Error missing -%s- state on info file."
-	errorNoState			string = "[%s] Project: %s. Error missing -%s- state on info file.\n"
+	errorNoState			string = "- [%s]\nProject: %s. Error missing -%s- state on info file.\n"
 	
 	errorListTag_log		string = "Project: %s. Error fetch all tag: %s."
-	errorListTag			string = "[%s] Project: %s. Error fetch all tag: %s.\n"
+	errorListTag			string = "- [%s]\nProject: %s. Error fetch all tag: %s.\n"
 
 	errorImageNotFound_log		string = "Project: %s. Image -%s- not found."
-	errorImageNotFound		string = "[%s] Project: %s. Image -%s- not found.\n"
+	errorImageNotFound		string = "- [%s]\nProject: %s. Image -%s- not found.\n"
 	
 	errorTagNotFound_log		string = "Project: %s. Tag -%s- not found."
-	errorTagNotFound		string = "[%s] Project: %s. Tag -%s- not found.\n"
+	errorTagNotFound		string = "- [%s]\nProject: %s. Tag -%s- not found.\n"
 	
 	errorSaveInfo_log		string = "Project: %s. Error save info."
-	errorSaveInfo			string = "[%s] Project: %s. Error save info.\n"
+	errorSaveInfo			string = "- [%s]\nProject: %s. Error save info.\n"
 	errorSaveInfoResponse		string = "Error save info.\n"
 
 	infoAlreadyLatest_log		string = "Update project: %s. You are already latest/newest. Up to: -%s- is the same with current state."
-	infoAlreadyLatest           	string = "[%s] Update project: %s. You are already latest/newest. Up to: -%s- is the same with current state.\n"
+	infoAlreadyLatest           	string = "- [%s]\nUpdate project: %s. You are already latest/newest. Up to: -%s- is the same with current state.\n"
 
-	infoCancelTask_log		string = "Cancel task -%s-."
-	infoCancelTask			string = "[%s] Cancel task -%s-.\n"
+	infoAlreadyDeploy_log		string = "Project: %s. Already deploy. Current state exist in info file."
+	infoAlreadyDeploy		string = "- [%s]\nProject: %s. Already deploy. Current state exist in info file.\n"
 
-	infoCompleteTask_log		string = "Complete task -%s-."
-	infoCompleteTask		string = "[%s] Complete task -%s-.\n"
+	infoCancelTask_log		string = "Cancel task %s."
+	infoCancelTask			string = "- [%s]\nCancel task %s.\n"
+
+	infoCompleteTask_log		string = "Complete task %s."
+	infoCompleteTask		string = "- [%s]\nComplete task %s.\n"
 
 	missingFlagResponse_log		string = "Command %s missing flag."
-	missingFlagResponse		string = "[%s] Command %s missing flag.\n"
+	missingFlagResponse		string = "- [%s]\nCommand %s missing flag.\n"
 
 	// Show flag. Checking config file
 	showFlag_v1		string = "%d. %s\n"
@@ -558,6 +561,14 @@ func deploy(command *bot.Cmd) (msg string, err error) {
                                 return fmt.Sprintf(errorNoState, getTime(), proname, info_TypeDefault), nil
 			}
 
+			// Get current
+			_, check = getCurrent(ain)
+			if check == true {
+				writeLog(userid, fmt.Sprintf(infoAlreadyDeploy_log, proname))
+				fmt.Printf(infoAlreadyDeploy, getTime(), proname)
+				return fmt.Sprintf(infoAlreadyDeploy, getTime(), proname), nil
+			}
+
 			// Handle tag list registry.hub.docker.com
                         ats, err := getAllTags(trueRepo(image))
                         if err != nil {
@@ -584,10 +595,9 @@ func deploy(command *bot.Cmd) (msg string, err error) {
                                 return fmt.Sprintf(errorTagNotFound, getTime(), proname, version), nil
                         }
 
-			//kube_command := []string{script}
-			//pipe_stdin := []string{targetDeploy, image, version}
-			//output = execute_pipe(pipe_stdin, "sh", kube_command...)
-			output = "ok"
+			kube_command := []string{script}
+			pipe_stdin := []string{targetDeploy, image, version}
+			output = execute_pipe(pipe_stdin, "sh", kube_command...)
 
 			// Update info
                         newid := getTagId(ats, version)
@@ -602,8 +612,8 @@ func deploy(command *bot.Cmd) (msg string, err error) {
                                 bot.SendMessage(telegram.TBot, command.Channel, errorSaveInfoResponse, command.User)
                         }
 
-			writeLog(userid, fmt.Sprintf(deploymentResponse_log, proname, version, "production"))
-			fmt.Printf(deploymentResponse, getTime(), proname, version, "production")
+			writeLog(userid, fmt.Sprintf(deploymentResponse_log, proname, image, version, "production"))
+			fmt.Printf(deploymentResponse, getTime(), proname, image, version, "production")
 			return fmt.Sprintf(okResponse, getTime(), output), nil
 	}
 	return "", nil
@@ -729,11 +739,15 @@ func update(command *bot.Cmd) (msg string, err error) {
                         check   = false
                         number  = len(command.Args)
 
+			env := defaultEnv
+
 			if len(command.Args) == 2 {
-				_, exist := depcmd["enviroment"][command.Args[1]]
+				_, exist := depcmd["environment"][command.Args[len(command.Args) - 1]]
 				if exist == false {
 					number = 1
 					check = true
+				} else {
+					env = command.Args[len(command.Args) - 1]
 				}
 			}
 			
@@ -742,16 +756,14 @@ func update(command *bot.Cmd) (msg string, err error) {
                                 writeLog(userid, fmt.Sprintf(forbiddenFlagResponse_log, command.Args[number]))
                                 fmt.Printf(forbiddenFlagResponse, getTime(), command.Args[number])
                                 return fmt.Sprintf(forbiddenFlagResponse, getTime(), command.Args[number]), nil
-                        }		
-			
+                        }
+
 			// Version: default - latest
                         // This version support only production|prod
-                        version := defaultTag
-                        env := defaultEnv
 			dir_parent := validatePath(os.Getenv(telegramProjectLabel))
 			script := fmt.Sprintf(pathScript, dir_parent, proname, proname, env)
 			yaml := fmt.Sprintf(pathYaml, dir_parent, proname, proname, env)
-			info := fmt.Sprintf(pathYaml, dir_parent, proname, proname, env)
+			info := fmt.Sprintf(pathInfo, dir_parent, proname, proname, env)
 			kube_command := []string{script}
 			lFile := []string{yaml, script, info}
 
@@ -768,10 +780,11 @@ func update(command *bot.Cmd) (msg string, err error) {
 			if err != nil {
 				writeLog(userid, fmt.Sprintf(errorInfoFile_log, proname))
                                 fmt.Printf(errorInfoFile, getTime(), proname)
+				fmt.Println(err.Error())
                                 return fmt.Sprintf(errorInfoFile, getTime(), proname), nil	
 			}
 			
-			var image string
+			var image, version string
 			// Get update
 			in_Update, check := getUpdate(ain)
 			if check == true {
@@ -799,6 +812,7 @@ func update(command *bot.Cmd) (msg string, err error) {
 			if err != nil {
 				writeLog(userid, fmt.Sprintf(errorListTag_log, proname, image))
 				fmt.Printf(errorListTag, getTime(), proname, image)
+				fmt.Println(err.Error())
 				return fmt.Sprintf(errorListTag, getTime(), proname, image), nil
 			}
 			
@@ -826,7 +840,7 @@ func update(command *bot.Cmd) (msg string, err error) {
 				if version == in_Current.Tag {
 					_, b2 = findTag(ats, in_Current.Tag, in_Current.Id)
 					if b2 {
-						image = image + ":" + version + ":" + string(in_Current.Id)
+						image = image + ":" + version + ":" + fmt.Sprintf("%d", in_Current.Id)
 						writeLog(userid, fmt.Sprintf(infoAlreadyLatest_log, proname, image))
 						fmt.Printf(infoAlreadyLatest, getTime(), proname, image)
 						return fmt.Sprintf(infoAlreadyLatest, getTime(), proname, image), nil
@@ -896,10 +910,10 @@ func init() {
 		"",
 		info)
 	bot.RegisterCommand(
-		"try",
+		"update",
 		"Try Telegram integration",
 		"",
-		try)
+		update)
 }
 
 // Func map file roles of user (file .json) 
