@@ -37,11 +37,17 @@ const (
 	unAuthorizedUserResponse_log	string = "Unauthorized user.\n"
 	notAllowCommandResponse		string = "- [%s]\n[%s] Not allow to run -%s- command.\nPermission denied.\n"
 	notAllowCommandResponse_log	string = "Not allow to run: %s command.Permission denied."
+
 	okResponse			string = "- [%s]\n%s\n"
+
 	deploymentResponse_log		string = "Deploy project: %s image:%s|version:%s|env:%s."
 	deploymentResponse		string = "- [%s]\nDeploy project: %s image:%s|version:%s|env:%s.\n"
+
 	updateResponse_log		string = "Update project: %s image:%s|version:%s|env:%s."
 	updateResponse			string = "- [%s]\nUpdate project: %s image:%s|version:%s|env:%s.\n"
+
+	rollbackResponse_log		string = "Rollback project: %s image:%s|version:%s|env:%s."
+	rollbackResponse		string = "- [%s]\nRollback project: %s image:%s|version:%s|env:%s.\n"
 
 	infoReceiveCommand_log		string = "Receive command %s."
 	infoReceiveCommand		string = "- [%s]\nReceive command %s.\n"
@@ -613,8 +619,9 @@ func deploy(command *bot.Cmd) (msg string, err error) {
                         }
 
 			writeLog(userid, fmt.Sprintf(deploymentResponse_log, proname, image, version, "production"))
-			fmt.Printf(deploymentResponse, getTime(), proname, image, version, "production")
-			return fmt.Sprintf(okResponse, getTime(), output), nil
+			temp := fmt.Sprintf(deploymentResponse, getTime(), proname, image, version, "production")
+			fmt.Printf(temp)
+			return fmt.Sprintf(okResponse, getTime(), output) + temp, nil
 	}
 	return "", nil
 }
@@ -749,6 +756,10 @@ func update(command *bot.Cmd) (msg string, err error) {
 					env = command.Args[len(command.Args) - 1]
 				}
 			}
+
+			if len(command.Args) == 1 {
+
+			}
 			
                         // Invalid flag
                         if check {
@@ -867,9 +878,10 @@ func update(command *bot.Cmd) (msg string, err error) {
 			}
 
 			// Output return
-                        writeLog(userid, fmt.Sprintf(updateResponse_log, proname, version, "production"))
-                        fmt.Printf(updateResponse, getTime(), proname, version, "production")
-                        return fmt.Sprintf(okResponse, getTime(), output), nil
+                        writeLog(userid, fmt.Sprintf(updateResponse_log, proname, image, version, "production"))
+			temp := fmt.Sprintf(updateResponse, getTime(), proname, image, version, "production")
+                        fmt.Printf(temp)
+                        return fmt.Sprintf(okResponse, getTime(), output) + temp, nil
 		
 	}
 	return "", nil
@@ -1035,11 +1047,18 @@ func rollback(command *bot.Cmd) (msg string, err error) {
 			}
 			
 			// Get rollback info
-			in_Rollback, check := getCurrent(ain)
+			in_Rollback, check := getRollback(ain)
 			if check == false {
 				writeLog(userid, fmt.Sprintf(errorNoState_log, proname, info_TypeRollback))
 				fmt.Printf(errorNoState, getTime(), proname, info_TypeRollback)
                                	return fmt.Sprintf(errorNoState, getTime(), proname, info_TypeRollback), nil
+			}
+
+			in_Current, check := getCurrent(ain)
+			if check == false {
+				writeLog(userid, fmt.Sprintf(errorNoState_log, proname, info_TypeCurrent))
+                                fmt.Printf(errorNoState, getTime(), proname, info_TypeCurrent)
+                                return fmt.Sprintf(errorNoState, getTime(), proname, info_TypeCurrent), nil
 			}
 			
 			image := in_Rollback.Name
@@ -1092,9 +1111,10 @@ func rollback(command *bot.Cmd) (msg string, err error) {
 			}
 
 			// Output return
-                        writeLog(userid, fmt.Sprintf(updateResponse_log, proname, version, "production"))
-                        fmt.Printf(updateResponse, getTime(), proname, version, "production")
-                        return fmt.Sprintf(okResponse, getTime(), output), nil
+                        writeLog(userid, fmt.Sprintf(rollbackResponse_log, proname, image, version, "production"))
+			temp := fmt.Sprintf(rollbackResponse, getTime(), proname, image, version, "production")
+                        fmt.Printf(temp)
+                        return fmt.Sprintf(okResponse, getTime(), output) + temp, nil
 		
 	}
 	return "", nil
