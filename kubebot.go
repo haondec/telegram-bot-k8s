@@ -35,7 +35,7 @@ const (
 	// Using
 	unAuthorizedUserResponse	string = "- [%s]\nUnauthorized user: %s.\nCancel task.\n"
 	unAuthorizedUserResponse_log	string = "Unauthorized user.\n"
-	notAllowCommandResponse		string = "- [%s]\n[%s] Not allow to run -%s- command.\nPermission denied.\n"
+	notAllowCommandResponse		string = "- [%s]\n[%s] Not allow to run #%s command.\nPermission denied.\n"
 	notAllowCommandResponse_log	string = "Not allow to run: %s command.Permission denied."
 
 	okResponse			string = "- [%s]\n%s\n"
@@ -61,24 +61,24 @@ const (
 	errorInfoFile_log		string = "Project: %s. Reading info file error."
 	errorInfoFile			string = "- [%s]\nProject: %s. Reading info file error.\n"
 	
-	errorNoState_log		string = "Project: %s. Error missing -%s- state on info file."
-	errorNoState			string = "- [%s]\nProject: %s. Error missing -%s- state on info file.\n"
+	errorNoState_log		string = "Project: %s. Get #%s state on info file fail - Cancel task."
+	errorNoState			string = "- [%s]\nProject: %s. Get #%s state on info file fail - Cancel task.\n"
 	
 	errorListTag_log		string = "Project: %s. Error fetch all tag: %s."
 	errorListTag			string = "- [%s]\nProject: %s. Error fetch all tag: %s.\n"
 
-	errorImageNotFound_log		string = "Project: %s. Image -%s- not found."
-	errorImageNotFound		string = "- [%s]\nProject: %s. Image -%s- not found.\n"
+	errorImageNotFound_log		string = "Project: %s. Image #%s not found."
+	errorImageNotFound		string = "- [%s]\nProject: %s. Image #%s not found.\n"
 	
-	errorTagNotFound_log		string = "Project: %s. Tag -%s- not found."
-	errorTagNotFound		string = "- [%s]\nProject: %s. Tag -%s- not found.\n"
+	errorTagNotFound_log		string = "Project: %s. Tag #%s not found."
+	errorTagNotFound		string = "- [%s]\nProject: %s. Tag #%s not found.\n"
 	
 	errorSaveInfo_log		string = "Project: %s. Error save info."
 	errorSaveInfo			string = "- [%s]\nProject: %s. Error save info.\n"
 	errorSaveInfoResponse		string = "Error save info.\n"
 
-	infoAlreadyLatest_log		string = "Update project: %s. You are already latest/newest. Up to: -%s- is the same with current state."
-	infoAlreadyLatest           	string = "- [%s]\nUpdate project: %s. You are already latest/newest. Up to: -%s- is the same with current state.\n"
+	infoAlreadyLatest_log		string = "Update project: %s. You are already latest/newest. Up to: #%s is the same with current state."
+	infoAlreadyLatest           	string = "- [%s]\nUpdate project: %s. You are already latest/newest. Up to: #%s is the same with current state.\n"
 
 	infoAlreadyDeploy_log		string = "Project: %s. Already deploy. Current state exist in info file."
 	infoAlreadyDeploy		string = "- [%s]\nProject: %s. Already deploy. Current state exist in info file.\n"
@@ -121,10 +121,11 @@ const (
 	
 	// Deploy help
 	deploy_help		 string = `[%s]
-Usage: /deploy [OPTION]... [PROJECT NAME] [ENVIROMENT]
+Usage: /deploy [OPTION]... [PROJECT NAME] [ENVIRONMENT]
 Deploy pod, service or deployment on production or other env.
 Arguments support.
 	-h, --help		show help using
+	-d, --delete		delete deployment
 	-s, --show		show list project
 	[Project name] [ENV]	/deploy projectA prod`
 
@@ -140,14 +141,23 @@ Contact Sysadmin/ProjectManager to authorize user`
 	
 	// Update help
 	update_help		string = `[%s]
-Usage: /update [OPTION]... [PROJECT NAME] [ENVIROMENT]
+Usage: /update [OPTION]... [PROJECT NAME] [ENVIRONMENT]
 Arguments support.
 	-h, --help		show help using
 	-s, --show		show list project
 	[Project name] [ENV]	/update projectA prod
-				Default tag:latest
+				(Default tag:latest)
 				/update projectA
-				Default env: production`
+				(Default env: production)`
+
+	// Rollback
+	rollback_help		string = `[%s]
+Usage: /rollback [OPTION]... [PROJECT NAME] [ENVRIRONMENT]
+	-h, --help		show help using
+	-s, --show		show list project
+	[Project name] [ENV]	/rollback projectA prod
+				/rollback projectA
+				(Default env: production)`
 )
 
 // Define var: mapping role <-> user
@@ -448,7 +458,6 @@ func deploy(command *bot.Cmd) (msg string, err error) {
 			fmt.Printf(temp)
 			return output, nil
 		case "-d", "--delete", "-c", "--cancel":
-			check := false
 			number := 0
 			// Unknown flag
 			if len(command.Args) >= 4 {
@@ -458,15 +467,27 @@ func deploy(command *bot.Cmd) (msg string, err error) {
 				return fmt.Sprintf(forbiddenFlagResponse, getTime(), command.Args[number]), nil
 			}
 		
-			// Delete deployment project
+			// Missing flag
 			if len(command.Args) != 3 {
 				writeLog(userid, fmt.Sprintf(missingFlagResponse_log, "Delete"))
 				fmt.Printf(missingFlagResponse, getTime(), "Delete")
 				return fmt.Sprintf(missingFlagResponse, getTime(), "Delete"), nil
 			}
 			
+			check := false
+			number = len(command.Args) - 1
+			env := command.Args[number]
+
+                        _, exist := depcmd["environment"][env]
+                        if exist == false {
+                        	// Invalid flag
+                                writeLog(userid, fmt.Sprintf(forbiddenFlagResponse_log, command.Args[number]))
+                                fmt.Printf(forbiddenFlagResponse, getTime(), command.Args[number])
+                                return fmt.Sprintf(forbiddenFlagResponse, getTime(), command.Args[number]), nil
+                        }
+			
 			// Project not found
-			proname := command.Args[0]
+			proname := command.Args[1]
 			check = false
 			files, err := ioutil.ReadDir(os.Getenv(telegramProjectLabel))
 			if err != nil {
@@ -531,6 +552,13 @@ func deploy(command *bot.Cmd) (msg string, err error) {
                                 fmt.Printf(errorNoState, getTime(), proname, info_TypeDefault)
                                 return fmt.Sprintf(errorNoState, getTime(), proname, info_TypeDefault), nil
 			}
+
+			_, check = getCurrent(ain)
+			if check == false {
+				writeLog(userid, fmt.Sprintf(errorNoState_log, proname, info_TypeCurrent))
+                                fmt.Printf(errorNoState, getTime(), proname, info_TypeDefault)
+                                return fmt.Sprintf(errorNoState, getTime(), proname, info_TypeCurrent), nil
+			}
 			
 			//############ Delete
 			// With delete no need specific image and version
@@ -540,8 +568,8 @@ func deploy(command *bot.Cmd) (msg string, err error) {
 			
 			// Update info
 			var ain_new []Info
-			ain_new := append(ain_new, in_Default)
-			err = saveInfo(info, ain)
+			ain_new = append(ain_new, in_Default)
+			err = saveInfo(info, ain_new)
                         if err != nil {
                                 writeLog(userid, fmt.Sprintf(errorSaveInfo_log, proname))
                                 fmt.Printf(errorSaveInfo, getTime(), proname)
@@ -771,7 +799,7 @@ func update(command *bot.Cmd) (msg string, err error) {
 	switch command.Args[0] {
 		case "-h", "--help":
                         // Show help using
-                        return fmt.Sprintf(deploy_help, getTime()), nil
+                        return fmt.Sprintf(update_help, getTime()), nil
                 case "-s", "--show":
 			// Show list project
                         files, err := ioutil.ReadDir(os.Getenv(telegramProjectLabel))
@@ -807,12 +835,25 @@ func update(command *bot.Cmd) (msg string, err error) {
                         return fmt.Sprintf(okResponse, getTime(), output), nil
 		default:
 			check := false
-			number := 0
+			number := len(command.Args) - 1
 			if len(command.Args) > 2 {
 				check = true
-				number = len(command.Args) - 1
+				number = 2
 			}
 			
+			env := defaultEnv
+
+                        if len(command.Args) == 2 {
+				number = len(command.Args) - 1
+                                _, exist := depcmd["environment"][command.Args[number]]
+                                if exist == false {
+                                        check = true
+                                } else {
+                                        env = command.Args[number]
+                                }
+                        }
+
+                        // Invalid flag
 			if check {
                                 writeLog(userid, fmt.Sprintf(forbiddenFlagResponse_log, command.Args[number]))
                                 fmt.Printf(forbiddenFlagResponse, getTime(), command.Args[number])
@@ -842,34 +883,6 @@ func update(command *bot.Cmd) (msg string, err error) {
                                 writeLog(userid, fmt.Sprintf(forbiddenProjectResponse_log, proname))
                                 fmt.Printf(forbiddenProjectResponse, getTime(), proname)
                                 return fmt.Sprintf(forbiddenProjectResponse, getTime(), proname), nil
-                        }
-
-			// This version support only flag env: production or prod
-                        check   = false
-                        number  = len(command.Args)
-			env := defaultEnv
-
-			if len(command.Args) == 2 {
-				_, exist := depcmd["environment"][command.Args[len(command.Args) - 1]]
-				if exist == false {
-					number = 1
-					check = true
-				} else {
-					env = command.Args[len(command.Args) - 1]
-				}
-			}
-
-			if len(command.Args) == 1 {
-				writeLog(userid, fmt.Sprintf(missingFlagResponse_log, "Update"))
-				fmt.Printf(missingFlagResponse, getTime(), "Update")
-				return fmt.Sprintf(missingFlagResponse, getTime(), "Update"), nil
-			}
-			
-                        // Invalid flag
-                        if check {
-                                writeLog(userid, fmt.Sprintf(forbiddenFlagResponse_log, command.Args[number]))
-                                fmt.Printf(forbiddenFlagResponse, getTime(), command.Args[number])
-                                return fmt.Sprintf(forbiddenFlagResponse, getTime(), command.Args[number]), nil
                         }
 
 			// Version: default - latest
@@ -1028,7 +1041,7 @@ func rollback(command *bot.Cmd) (msg string, err error) {
 	switch command.Args[0] {
 		case "-h", "--help":
                         // Show help using
-                        return fmt.Sprintf(deploy_help, getTime()), nil
+                        return fmt.Sprintf(rollback_help, getTime()), nil
                 case "-s", "--show":
 			// Show list project
                         files, err := ioutil.ReadDir(os.Getenv(telegramProjectLabel))
@@ -1064,12 +1077,23 @@ func rollback(command *bot.Cmd) (msg string, err error) {
                         return fmt.Sprintf(okResponse, getTime(), output), nil
 		default:
 			check := false
-			number := 0
+			number := len(command.Args) - 1
 			if len(command.Args) > 2 {
 				check = true
-				number = len(command.Args) - 1
+				number = 2
 			}
-			
+
+                        env := defaultEnv
+
+                        if len(command.Args) == 2 {
+                                _, exist := depcmd["environment"][command.Args[number]]
+                                if exist == false {
+                                        check = true
+                                } else {
+                                        env = command.Args[number]
+                                }       
+                        }
+
 			if check {
                                 writeLog(userid, fmt.Sprintf(forbiddenFlagResponse_log, command.Args[number]))
                                 fmt.Printf(forbiddenFlagResponse, getTime(), command.Args[number])
@@ -1101,35 +1125,6 @@ func rollback(command *bot.Cmd) (msg string, err error) {
                                 return fmt.Sprintf(forbiddenProjectResponse, getTime(), proname), nil
                         }
 
-			// This version support only flag env: production or prod
-                        check   = false
-                        number  = len(command.Args)
-
-			env := defaultEnv
-
-			if len(command.Args) == 2 {
-				_, exist := depcmd["environment"][command.Args[len(command.Args) - 1]]
-				if exist == false {
-					number = 1
-					check = true
-				} else {
-					env = command.Args[len(command.Args) - 1]
-				}
-			}
-		
-			if len(command.Args) == 1 {
-				writeLog(userid, fmt.Sprintf(missingFlagResponse_log, "Rollback"))
-				fmt.Printf(missingFlagResponse, getTime(), "Rollback")
-				return fmt.Sprintf(missingFlagResponse, getTime(), "Rollback"), nil
-			}
-			
-                        // Invalid flag
-                        if check {
-                                writeLog(userid, fmt.Sprintf(forbiddenFlagResponse_log, command.Args[number]))
-                                fmt.Printf(forbiddenFlagResponse, getTime(), command.Args[number])
-                                return fmt.Sprintf(forbiddenFlagResponse, getTime(), command.Args[number]), nil
-                        }
-
 			// Version: default - latest
                         // This version support only production|prod
 			dir_parent := validatePath(os.Getenv(telegramProjectLabel))
@@ -1140,8 +1135,8 @@ func rollback(command *bot.Cmd) (msg string, err error) {
 			lFile := []string{yaml, script, info}
 
 			// Check file script, yaml, info
-                        rs, c := checkConfigFile(lFile, ",")
-                        if c == false {
+                        rs, check := checkConfigFile(lFile, ",")
+                        if check == false {
                                 writeLog(userid, fmt.Sprintf(errorConfigFile_log, proname, rs))
                                 fmt.Printf(errorConfigFile, getTime(), proname, rs)
                                 return fmt.Sprintf(errorConfigFile, getTime(), proname, rs), nil
