@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+//	"strings"
 	"fmt"
 	"os"
 	"io/ioutil"
@@ -40,17 +41,17 @@ const (
 
 	okResponse			string = "- [%s]\n%s\n"
 
-	deploymentResponse_log		string = "Deploy project: %s image:%s|version:%s|env:%s."
-	deploymentResponse		string = "- [%s]\nDeploy project: %s image:%s|version:%s|env:%s.\n"
+	deploymentResponse_log		string = "Deploy project: %s image:%s, version:%s, env:%s. Completed."
+	deploymentResponse		string = "- [%s]\nDeploy project: %s image:%s, version:%s, env:%s.\nCompleted.\n"
 
-	updateResponse_log		string = "Update project: %s image:%s|version:%s|env:%s."
-	updateResponse			string = "- [%s]\nUpdate project: %s image:%s|version:%s|env:%s.\n"
+	updateResponse_log		string = "Update project: %s image:%s, version:%s, env:%s. Completed."
+	updateResponse			string = "- [%s]\nUpdate project: %s image:%s, version:%s, env:%s.\nCompleted.\n"
 	
-	deleteResponse_log		string = "Delete/Cancel project:%s|env:%s. Completed."
-	deleteResponse			string = "- [%s]\nDelete/Cancel project:%s|env:%s. Completed.\n"
+	deleteResponse_log		string = "Delete/Cancel project:%s, env:%s. Completed."
+	deleteResponse			string = "- [%s]\nDelete/Cancel project:%s, env:%s.\nCompleted.\n"
 
-	rollbackResponse_log		string = "Rollback project: %s image:%s|version:%s|env:%s."
-	rollbackResponse		string = "- [%s]\nRollback project: %s image:%s|version:%s|env:%s.\n"
+	rollbackResponse_log		string = "Rollback project: %s image:%s, version:%s, env:%s. Completed."
+	rollbackResponse		string = "- [%s]\nRollback project: %s image:%s, version:%s, env:%s.\nCompleted.\n"
 
 	infoReceiveCommand_log		string = "Receive command %s."
 	infoReceiveCommand		string = "- [%s]\nReceive command %s.\n"
@@ -91,7 +92,10 @@ const (
 
 	missingFlagResponse_log		string = "Command %s missing flag."
 	missingFlagResponse		string = "- [%s]\nCommand %s missing flag.\n"
-
+	
+	errorMessage_v1			string = "error:"
+	errorMessage_v2			string = "Error from"
+	
 	// Show flag. Checking config file
 	showFlag_v1		string = "%d. %s\n"
 	showFlag_v2		string = "%d. %s\n   (Error/Missing config file: %s)\n"
@@ -565,7 +569,7 @@ func deploy(command *bot.Cmd) (msg string, err error) {
 			pipe_stdin := []string{targetDelete, image, version}
 			kube_command := []string{script}
 			output = execute_pipe(pipe_stdin, "sh", kube_command...)
-			
+
 			// Update info
 			var ain_new []Info
 			ain_new = append(ain_new, in_Default)
@@ -734,7 +738,7 @@ func deploy(command *bot.Cmd) (msg string, err error) {
 			kube_command := []string{script}
 			pipe_stdin := []string{targetDeploy, image, version}
 			output = execute_pipe(pipe_stdin, "sh", kube_command...)
-
+			
 			// Update info
                         newid := getTagId(ats, version)
                         new_Current := Info{info_TypeCurrent, image, version, newid}
