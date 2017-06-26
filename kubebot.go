@@ -517,6 +517,7 @@ func deploy(command *bot.Cmd) (msg string, err error) {
 		
 			//############ Delete/Cancel project
 			// Now support only env:prod
+			env = defaultEnv
 			dir_parent := validatePath(os.Getenv(telegramProjectLabel))
 			script := fmt.Sprintf(pathScript, dir_parent, proname, proname, env)
 			yaml := fmt.Sprintf(pathYaml, dir_parent, proname, proname, env)
@@ -658,6 +659,7 @@ func deploy(command *bot.Cmd) (msg string, err error) {
 			
 			//############ Deploy project
 			// Now support only env:prod
+			env = defaultEnv
 			dir_parent := validatePath(os.Getenv(telegramProjectLabel))
 			script := fmt.Sprintf(pathScript, dir_parent, proname, proname, env)
 			yaml := fmt.Sprintf(pathYaml, dir_parent, proname, proname, env)
@@ -891,6 +893,7 @@ func update(command *bot.Cmd) (msg string, err error) {
 
 			// Version: default - latest
                         // This version support only production|prod
+			env = defaultEnv
 			dir_parent := validatePath(os.Getenv(telegramProjectLabel))
 			script := fmt.Sprintf(pathScript, dir_parent, proname, proname, env)
 			yaml := fmt.Sprintf(pathYaml, dir_parent, proname, proname, env)
@@ -1131,6 +1134,7 @@ func rollback(command *bot.Cmd) (msg string, err error) {
 
 			// Version: default - latest
                         // This version support only production|prod
+			env = defaultEnv
 			dir_parent := validatePath(os.Getenv(telegramProjectLabel))
 			script := fmt.Sprintf(pathScript, dir_parent, proname, proname, env)
 			yaml := fmt.Sprintf(pathYaml, dir_parent, proname, proname, env)
