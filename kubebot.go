@@ -399,21 +399,21 @@ func deploy(command *bot.Cmd) (msg string, err error) {
         // Checking authorized user
         if !exist {
 		writeLog(userid, unAuthorizedUserResponse_log)
-		fmt.Printf(unAuthorizedUserResponse, getTime())
-                return fmt.Sprintf(unAuthorizedUserResponse, getTime()), nil
+		fmt.Printf(unAuthorizedUserResponse, getTime(), userid)
+                return fmt.Sprintf(unAuthorizedUserResponse, getTime(), userid), nil
         }
 	
-	// Only /deploy
-	if len(command.Args) < 1 {
-		// Show help using
-		return fmt.Sprintf(deploy_help, getTime()), nil
-	}
-
 	// if not Project Manager. Do nothing.
 	if rls != rolelv3 {
 		writeLog(userid, fmt.Sprintf(notAllowCommandResponse_log, rls, "Deploy " + command.Args[0]))
 		fmt.Printf(notAllowCommandResponse, getTime(), rls, "Deploy " + command.Args[0])
                 return fmt.Sprintf(notAllowCommandResponse, getTime(), rls, "Deploy " + command.Args[0]), nil
+	}
+	
+	// Only /deploy
+	if len(command.Args) < 1 {
+		// Show help using
+		return fmt.Sprintf(deploy_help, getTime()), nil
 	}
 	
 	output := ""
@@ -784,21 +784,21 @@ func update(command *bot.Cmd) (msg string, err error) {
         // Checking authorized user
         if !exist {
                 writeLog(userid, unAuthorizedUserResponse_log)
-                fmt.Printf(unAuthorizedUserResponse, getTime())
-                return fmt.Sprintf(unAuthorizedUserResponse, getTime()), nil
+                fmt.Printf(unAuthorizedUserResponse, getTime(), userid)
+                return fmt.Sprintf(unAuthorizedUserResponse, getTime(), userid), nil
         }
 
-        // Only /update
-        if len(command.Args) < 1 {
-                // Show help using
-                return fmt.Sprintf(update_help, getTime()), nil
-        }
-
-        // if not Project Manager. Do nothing.
+	// if not Project Manager. Do nothing.
         if rls != rolelv3 {
                 writeLog(userid, fmt.Sprintf(notAllowCommandResponse_log, rls, "Update " + command.Args[0]))
                 fmt.Printf(notAllowCommandResponse, getTime(), rls, "Update " + command.Args[0])
                 return fmt.Sprintf(notAllowCommandResponse, getTime(), rls, "Update " + command.Args[0]), nil
+        }
+	
+        // Only /update
+        if len(command.Args) < 1 {
+                // Show help using
+                return fmt.Sprintf(update_help, getTime()), nil
         }
 
         output := ""
@@ -1027,21 +1027,21 @@ func rollback(command *bot.Cmd) (msg string, err error) {
         // Checking authorized user
         if !exist {
                 writeLog(userid, unAuthorizedUserResponse_log)
-                fmt.Printf(unAuthorizedUserResponse, getTime())
-                return fmt.Sprintf(unAuthorizedUserResponse, getTime()), nil
+                fmt.Printf(unAuthorizedUserResponse, getTime(), userid)
+                return fmt.Sprintf(unAuthorizedUserResponse, getTime(), userid), nil
         }
 
-        // Only /rollback
-        if len(command.Args) < 1 {
-                // Show help using
-                return fmt.Sprintf(update_help, getTime()), nil
-        }
-
-        // if not Project Manager. Do nothing.
+	// if not Project Manager. Do nothing.
         if rls != rolelv3 {
                 writeLog(userid, fmt.Sprintf(notAllowCommandResponse_log, rls, "Rollback " + command.Args[0]))
                 fmt.Printf(notAllowCommandResponse, getTime(), rls, "Rollback " + command.Args[0])
                 return fmt.Sprintf(notAllowCommandResponse, getTime(), rls, "Rollback " + command.Args[0]), nil
+        }
+	
+        // Only /rollback
+        if len(command.Args) < 1 {
+                // Show help using
+                return fmt.Sprintf(update_help, getTime()), nil
         }
 
         output := ""
