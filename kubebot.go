@@ -588,7 +588,7 @@ func deploy(command *bot.Cmd) (msg string, err error) {
 			// With delete no need specific image and version
 			pipe_stdin := []string{targetDelete, image, version}
 			kube_command := []string{script}
-			output = execute_pipe(pipe_stdin, "sh", kube_command...)
+			output = "#Delete output:\n" + execute_pipe(pipe_stdin, "sh", kube_command...)
 
 			// Update info
 			var ain_new []Info
@@ -771,7 +771,7 @@ func deploy(command *bot.Cmd) (msg string, err error) {
 			// Deploy execute
 			kube_command := []string{script}
 			pipe_stdin := []string{targetDeploy, image, version}
-			output = execute_pipe(pipe_stdin, "sh", kube_command...)
+			output = "#Deploy output:\n" + execute_pipe(pipe_stdin, "sh", kube_command...)
 			
 			// Update info
                         newid := getTagId(ats, version)
