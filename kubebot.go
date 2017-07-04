@@ -566,8 +566,14 @@ func deploy(command *bot.Cmd) (msg string, err error) {
                         }
 			
 			var image, version string
-			in_Current, check = getCurrent(ain)
+			in_Default, check := getDefault(ain)
+			if check == false {
+				writeLog(userid, fmt.Sprintf(errorNoState_log, proname, info_TypeDefault))
+                                fmt.Printf(errorNoState, getTime(), proname, info_TypeDefault)
+                                return fmt.Sprintf(errorNoState, getTime(), proname, info_TypeDefault), nil
+			}
 		
+			in_Current, check := getCurrent(ain)
 			if check == true {
 				// Alway get image from default
 				image = in_Current.Name
