@@ -45,7 +45,7 @@ func make_lock(path string) {
                 fn = validatePath(path) + flock
         }
         if check_lock(fn) == false {
-                _, _ := os.Create(fn)
+                _, _ = os.Create(fn)
         }
 }
 
@@ -55,6 +55,6 @@ func un_lock(path string) {
                 fn = validatePath(path) + flock
         }
         if check_lock(fn) == false {
-                _ := os.Remove(fn)
+                _ = os.Remove(fn)
         }
 }
