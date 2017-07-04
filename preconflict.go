@@ -3,6 +3,7 @@ package main
 import (
         "os"
         "strings"
+	"fmt"
 )
 
 const (
@@ -29,7 +30,9 @@ func check_lock_v2(path string) bool {
         fn := subCL_getLast(path, "/")
         if fn != flock {
                 fn = validatePath(path) + flock
-        }
+        } else {
+		fn = path
+	}
         fInfo, err := os.Stat(fn)
         if err == nil {
                 if fInfo.IsDir() == false {
@@ -43,7 +46,10 @@ func make_lock(path string) {
         fn := subCL_getLast(path, "/")
         if fn != flock {
                 fn = validatePath(path) + flock
-        }
+	} else {
+		fn = path
+	}
+	fmt.Println(fn)
         if check_lock(fn) == false {
                 _, _ = os.Create(fn)
         }
@@ -53,7 +59,9 @@ func un_lock(path string) {
         fn := subCL_getLast(path, "/")
         if fn != flock {
                 fn = validatePath(path) + flock
-        }
+        } else {
+		fn = path
+	}
         if check_lock(fn) == false {
                 _ = os.Remove(fn)
         }
