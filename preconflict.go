@@ -62,7 +62,7 @@ func un_lock(path string) {
         } else {
 		fn = path
 	}
-        if check_lock(fn) == false {
+        if check_lock(fn) == true {
                 _ = os.Remove(fn)
         }
 }
