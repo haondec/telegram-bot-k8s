@@ -77,6 +77,9 @@ const (
 	errorSaveInfo_log		string = "Project: %s. Error save info."
 	errorSaveInfo			string = "- [%s]\nProject: %s. Error save info.\n"
 	errorSaveInfoResponse		string = "Error save info.\n"
+	
+	infoProjectLocked_log		string = "Project: %s. Locked by another user. Try later."
+	infoProjectLocked		string = "- [%s]\nProject: %s. Locked by another user. Try later."
 
 	infoAlreadyLatest_log		string = "Update project: %s. You are already latest/newest. Up to: #%s is the same with current state."
 	infoAlreadyLatest           	string = "- [%s]\nUpdate project: %s. You are already latest/newest. Up to: #%s is the same with current state.\n"
@@ -438,6 +441,8 @@ func deploy(command *bot.Cmd) (msg string, err error) {
 			dir_parent := validatePath(os.Getenv(telegramProjectLabel))
 			// This version only support production env
 			env := defaultEnv
+			check := false
+			proname := ""
 			for _, f := range files {
 				if f.IsDir() {
 					// Increase count
@@ -447,12 +452,18 @@ func deploy(command *bot.Cmd) (msg string, err error) {
 					f_script := fmt.Sprintf(pathScript, dir_parent, f.Name(), f.Name(), env)
 					f_info := fmt.Sprintf(pathInfo, dir_parent, f.Name(), f.Name(), env)
 					lFile := []string{f_yaml, f_script, f_info}
-
+					
+					check = check_lock_v2(dir_parent + f.Name())
+					proname = f.Name()
+					if check {
+						proname += " [locked]"
+					}
 					rs, c := checkConfigFile(lFile, ",")
+					
 					if c {
-						output += fmt.Sprintf(showFlag_v1, cnt, f.Name())
+						output += fmt.Sprintf(showFlag_v1, cnt, proname)
 					} else {
-						output += fmt.Sprintf(showFlag_v2, cnt, f.Name(), rs)
+						output += fmt.Sprintf(showFlag_v2, cnt, proname, rs)
 					}
 				}
 			}
@@ -515,10 +526,23 @@ func deploy(command *bot.Cmd) (msg string, err error) {
 				return fmt.Sprintf(forbiddenProjectResponse, getTime(), proname), nil
 			}
 		
+			// Project locked
+			dir_parent := validatePath(os.Getenv(telegramProjectLabel))
+			check = check_lock_v2(dir_parent + proname + "/")
+			if check == true {
+				writeLog(userid, fmt.Sprintf(infoProjectLocked, proname))
+				fmt.Printf(infoProjectLocked, getTime(), proname)
+				return fmt.Sprintf(infoProjectLocked, getTime(), proname), nil
+			}
+		
+			// Make lock
+			make_lock(dir_parent)
+			// Unlock after complete function
+			defer un_lock(dir_parent)
+		
 			//############ Delete/Cancel project
 			// Now support only env:prod
 			env = defaultEnv
-			dir_parent := validatePath(os.Getenv(telegramProjectLabel))
 			script := fmt.Sprintf(pathScript, dir_parent, proname, proname, env)
 			yaml := fmt.Sprintf(pathYaml, dir_parent, proname, proname, env)
 			info := fmt.Sprintf(pathInfo, dir_parent, proname, proname, env)
@@ -542,26 +566,15 @@ func deploy(command *bot.Cmd) (msg string, err error) {
                         }
 			
 			var image, version string
-			// Get default
-			in_Default, check := getDefault(ain)
+			in_Current, check = getCurrent(ain)
+		
 			if check == true {
 				// Alway get image from default
-				image = in_Default.Name
-				// If Default tag dont specify, value will get by program
-				if in_Default.Tag == "" {
-					in_Default.Tag = defaultTag
-				}
-				version = in_Default.Tag
+				image = in_Current.Name
+				version = in_Current.Tag
 			} else {
-				writeLog(userid, fmt.Sprintf(errorNoState_log, proname, info_TypeDefault))
-                                fmt.Printf(errorNoState, getTime(), proname, info_TypeDefault)
-                                return fmt.Sprintf(errorNoState, getTime(), proname, info_TypeDefault), nil
-			}
-
-			_, check = getCurrent(ain)
-			if check == false {
 				writeLog(userid, fmt.Sprintf(errorNoState_log, proname, info_TypeCurrent))
-                                fmt.Printf(errorNoState, getTime(), proname, info_TypeDefault)
+                                fmt.Printf(errorNoState, getTime(), proname, info_TypeCurrent)
                                 return fmt.Sprintf(errorNoState, getTime(), proname, info_TypeCurrent), nil
 			}
 			
@@ -588,6 +601,7 @@ func deploy(command *bot.Cmd) (msg string, err error) {
 		default:
 			check := false
 			number := 0
+			dir_parent := validatePath(os.Getenv(telegramProjectLabel))
 			// Unknown flag
 			if len(command.Args) < 2 && len(command.Args) == 3 {
 				writeLog(userid, fmt.Sprintf(missingFlagResponse_log, "Deploy"))
@@ -629,6 +643,19 @@ func deploy(command *bot.Cmd) (msg string, err error) {
 				fmt.Printf(forbiddenProjectResponse, getTime(), proname)
 				return fmt.Sprintf(forbiddenProjectResponse, getTime(), proname), nil
 			}
+		
+			// Project locked
+			check = check_lock_v2(dir_parent + proname + "/")
+			if check == true {
+				writeLog(userid, fmt.Sprintf(infoProjectLocked, proname))
+				fmt.Printf(infoProjectLocked, getTime(), proname)
+				return fmt.Sprintf(infoProjectLocked, getTime(), proname), nil
+			}
+		
+			// Make lock
+			make_lock(dir_parent)
+			// Unlock after complete function
+			defer un_lock(dir_parent)
 
 			// This version support only flag env: production or prod
 			check	= false
@@ -660,7 +687,6 @@ func deploy(command *bot.Cmd) (msg string, err error) {
 			//############ Deploy project
 			// Now support only env:prod
 			env = defaultEnv
-			dir_parent := validatePath(os.Getenv(telegramProjectLabel))
 			script := fmt.Sprintf(pathScript, dir_parent, proname, proname, env)
 			yaml := fmt.Sprintf(pathYaml, dir_parent, proname, proname, env)
 			info := fmt.Sprintf(pathInfo, dir_parent, proname, proname, env)
@@ -808,37 +834,48 @@ func update(command *bot.Cmd) (msg string, err error) {
                         return fmt.Sprintf(update_help, getTime()), nil
                 case "-s", "--show":
 			// Show list project
-                        files, err := ioutil.ReadDir(os.Getenv(telegramProjectLabel))
-                        output = "All project list bellow [Total %d]:\n"
-                        cnt := 0
-                        if err != nil {
-                                output = fmt.Sprintf(output, cnt)
-                                return fmt.Sprintf(okResponse, getTime(), output), nil
-                        }
+			files, err := ioutil.ReadDir(os.Getenv(telegramProjectLabel))
+			output = "All project list bellow [Total %d]:\n"
+			cnt := 0
+			if err != nil {
+				output = fmt.Sprintf(output, cnt)
+				return fmt.Sprintf(okResponse, getTime(), output), nil
+			}
 
-                        dir_parent := validatePath(os.Getenv(telegramProjectLabel))
-                        // This version only support production env
-                        env := defaultEnv
-                        for _, f := range files {
-                                if f.IsDir() {
-                                        // Increase count
-                                        cnt++
-                                        // Checking file yaml, sh
-                                        f_yaml := fmt.Sprintf(pathYaml, dir_parent, f.Name(), f.Name(), env)
-                                        f_script := fmt.Sprintf(pathScript, dir_parent, f.Name(), f.Name(), env)
+			dir_parent := validatePath(os.Getenv(telegramProjectLabel))
+			// This version only support production env
+			env := defaultEnv
+			check := false
+			proname := ""
+			for _, f := range files {
+				if f.IsDir() {
+					// Increase count
+					cnt++
+					// Checking file yaml, sh
+					f_yaml := fmt.Sprintf(pathYaml, dir_parent, f.Name(), f.Name(), env)
+					f_script := fmt.Sprintf(pathScript, dir_parent, f.Name(), f.Name(), env)
 					f_info := fmt.Sprintf(pathInfo, dir_parent, f.Name(), f.Name(), env)
-                                        lFile := []string{f_yaml, f_script, f_info}
-
-                                        rs, c := checkConfigFile(lFile, ",")
-                                        if c {
-                                                output += fmt.Sprintf(showFlag_v1, cnt, f.Name())
-                                        } else {
-                                                output += fmt.Sprintf(showFlag_v2, cnt, f.Name(), rs)
-                                        }
-                                }               
-                        }
-                        output = fmt.Sprintf(output, cnt) 
-                        return fmt.Sprintf(okResponse, getTime(), output), nil
+					lFile := []string{f_yaml, f_script, f_info}
+					
+					check = check_lock_v2(dir_parent + f.Name())
+					proname = f.Name()
+					if check {
+						proname += " [locked]"
+					}
+					rs, c := checkConfigFile(lFile, ",")
+					
+					if c {
+						output += fmt.Sprintf(showFlag_v1, cnt, proname)
+					} else {
+						output += fmt.Sprintf(showFlag_v2, cnt, proname, rs)
+					}
+				}
+			}
+			output = fmt.Sprintf(output, cnt)
+			temp := fmt.Sprintf(infoCompleteTask, getTime(), this_task)
+			output = fmt.Sprintf(okResponse, getTime(), output)
+			fmt.Printf(temp)
+			return output, nil
 		default:
 			check := false
 			number := len(command.Args) - 1
@@ -890,11 +927,24 @@ func update(command *bot.Cmd) (msg string, err error) {
                                 fmt.Printf(forbiddenProjectResponse, getTime(), proname)
                                 return fmt.Sprintf(forbiddenProjectResponse, getTime(), proname), nil
                         }
+		
+			// Project locked
+			dir_parent := validatePath(os.Getenv(telegramProjectLabel))
+			check = check_lock_v2(dir_parent + proname + "/")
+			if check == true {
+				writeLog(userid, fmt.Sprintf(infoProjectLocked, proname))
+				fmt.Printf(infoProjectLocked, getTime(), proname)
+				return fmt.Sprintf(infoProjectLocked, getTime(), proname), nil
+			}
+		
+			// Make lock
+			make_lock(dir_parent)
+			// Unlock after complete function
+			defer un_lock(dir_parent)
 
 			// Version: default - latest
                         // This version support only production|prod
 			env = defaultEnv
-			dir_parent := validatePath(os.Getenv(telegramProjectLabel))
 			script := fmt.Sprintf(pathScript, dir_parent, proname, proname, env)
 			yaml := fmt.Sprintf(pathYaml, dir_parent, proname, proname, env)
 			info := fmt.Sprintf(pathInfo, dir_parent, proname, proname, env)
@@ -1051,37 +1101,48 @@ func rollback(command *bot.Cmd) (msg string, err error) {
                         return fmt.Sprintf(rollback_help, getTime()), nil
                 case "-s", "--show":
 			// Show list project
-                        files, err := ioutil.ReadDir(os.Getenv(telegramProjectLabel))
-                        output = "All project list bellow [Total %d]:\n"
-                        cnt := 0
-                        if err != nil {
-                                output = fmt.Sprintf(output, cnt)
-                                return fmt.Sprintf(okResponse, getTime(), output), nil
-                        }
+			files, err := ioutil.ReadDir(os.Getenv(telegramProjectLabel))
+			output = "All project list bellow [Total %d]:\n"
+			cnt := 0
+			if err != nil {
+				output = fmt.Sprintf(output, cnt)
+				return fmt.Sprintf(okResponse, getTime(), output), nil
+			}
 
-                        dir_parent := validatePath(os.Getenv(telegramProjectLabel))
-                        // This version only support production env
-                        env := defaultEnv
-                        for _, f := range files {
-                                if f.IsDir() {
-                                        // Increase count
-                                        cnt++
-                                        // Checking file yaml, sh
-                                        f_yaml := fmt.Sprintf(pathYaml, dir_parent, f.Name(), f.Name(), env)
-                                        f_script := fmt.Sprintf(pathScript, dir_parent, f.Name(), f.Name(), env)
+			dir_parent := validatePath(os.Getenv(telegramProjectLabel))
+			// This version only support production env
+			env := defaultEnv
+			check := false
+			proname := ""
+			for _, f := range files {
+				if f.IsDir() {
+					// Increase count
+					cnt++
+					// Checking file yaml, sh
+					f_yaml := fmt.Sprintf(pathYaml, dir_parent, f.Name(), f.Name(), env)
+					f_script := fmt.Sprintf(pathScript, dir_parent, f.Name(), f.Name(), env)
 					f_info := fmt.Sprintf(pathInfo, dir_parent, f.Name(), f.Name(), env)
-                                        lFile := []string{f_yaml, f_script, f_info}
-
-                                        rs, c := checkConfigFile(lFile, ",")
-                                        if c {
-                                                output += fmt.Sprintf(showFlag_v1, cnt, f.Name())
-                                        } else {
-                                                output += fmt.Sprintf(showFlag_v2, cnt, f.Name(), rs)
-                                        }
-                                }               
-                        }
-                        output = fmt.Sprintf(output, cnt) 
-                        return fmt.Sprintf(okResponse, getTime(), output), nil
+					lFile := []string{f_yaml, f_script, f_info}
+					
+					check = check_lock_v2(dir_parent + f.Name())
+					proname = f.Name()
+					if check {
+						proname += " [locked]"
+					}
+					rs, c := checkConfigFile(lFile, ",")
+					
+					if c {
+						output += fmt.Sprintf(showFlag_v1, cnt, proname)
+					} else {
+						output += fmt.Sprintf(showFlag_v2, cnt, proname, rs)
+					}
+				}
+			}
+			output = fmt.Sprintf(output, cnt)
+			temp := fmt.Sprintf(infoCompleteTask, getTime(), this_task)
+			output = fmt.Sprintf(okResponse, getTime(), output)
+			fmt.Printf(temp)
+			return output, nil
 		default:
 			check := false
 			number := len(command.Args) - 1
@@ -1131,11 +1192,24 @@ func rollback(command *bot.Cmd) (msg string, err error) {
                                 fmt.Printf(forbiddenProjectResponse, getTime(), proname)
                                 return fmt.Sprintf(forbiddenProjectResponse, getTime(), proname), nil
                         }
+		
+			// Project locked
+			dir_parent := validatePath(os.Getenv(telegramProjectLabel))
+			check = check_lock_v2(dir_parent + proname + "/")
+			if check == true {
+				writeLog(userid, fmt.Sprintf(infoProjectLocked, proname))
+				fmt.Printf(infoProjectLocked, getTime(), proname)
+				return fmt.Sprintf(infoProjectLocked, getTime(), proname), nil
+			}
+		
+			// Make lock
+			make_lock(dir_parent)
+			// Unlock after complete function
+			defer un_lock(dir_parent)
 
 			// Version: default - latest
                         // This version support only production|prod
 			env = defaultEnv
-			dir_parent := validatePath(os.Getenv(telegramProjectLabel))
 			script := fmt.Sprintf(pathScript, dir_parent, proname, proname, env)
 			yaml := fmt.Sprintf(pathYaml, dir_parent, proname, proname, env)
 			info := fmt.Sprintf(pathInfo, dir_parent, proname, proname, env)
