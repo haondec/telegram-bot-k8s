@@ -1,7 +1,6 @@
 package main
 
 import (
-        "errors"
         "os"
         "strings"
 )
@@ -46,7 +45,7 @@ func make_lock(path string) {
                 fn = validatePath(path) + flock
         }
         if check_lock(fn) == false {
-                f, err := os.Create(fn)
+                _, _ := os.Create(fn)
         }
 }
 
@@ -56,6 +55,6 @@ func un_lock(path string) {
                 fn = validatePath(path) + flock
         }
         if check_lock(fn) == false {
-                f, err := os.Remove(fn)
+                _ := os.Remove(fn)
         }
 }
