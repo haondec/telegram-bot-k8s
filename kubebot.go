@@ -453,7 +453,7 @@ func deploy(command *bot.Cmd) (msg string, err error) {
 					f_info := fmt.Sprintf(pathInfo, dir_parent, f.Name(), f.Name(), env)
 					lFile := []string{f_yaml, f_script, f_info}
 					
-					check = check_lock_v2(dir_parent + f.Name())
+					check = check_lock_v2(dir_parent + f.Name() + "/")
 					proname = f.Name()
 					if check {
 						proname += " [locked]"
@@ -536,9 +536,9 @@ func deploy(command *bot.Cmd) (msg string, err error) {
 			}
 		
 			// Make lock
-			make_lock(dir_parent)
+			make_lock(dir_parent + proname + "/")
 			// Unlock after complete function
-			defer un_lock(dir_parent)
+			defer un_lock(dir_parent + proname + "/")
 		
 			//############ Delete/Cancel project
 			// Now support only env:prod
@@ -659,9 +659,9 @@ func deploy(command *bot.Cmd) (msg string, err error) {
 			}
 		
 			// Make lock
-			make_lock(dir_parent)
+			make_lock(dir_parent + proname + "/")
 			// Unlock after complete function
-			defer un_lock(dir_parent)
+			defer un_lock(dir_parent + proname + "/")
 
 			// This version support only flag env: production or prod
 			check	= false
@@ -863,7 +863,7 @@ func update(command *bot.Cmd) (msg string, err error) {
 					f_info := fmt.Sprintf(pathInfo, dir_parent, f.Name(), f.Name(), env)
 					lFile := []string{f_yaml, f_script, f_info}
 					
-					check = check_lock_v2(dir_parent + f.Name())
+					check = check_lock_v2(dir_parent + f.Name() + "/")
 					proname = f.Name()
 					if check {
 						proname += " [locked]"
@@ -944,9 +944,9 @@ func update(command *bot.Cmd) (msg string, err error) {
 			}
 		
 			// Make lock
-			make_lock(dir_parent)
+			make_lock(dir_parent + proname + "/")
 			// Unlock after complete function
-			defer un_lock(dir_parent)
+			defer un_lock(dir_parent + proname + "/")
 
 			// Version: default - latest
                         // This version support only production|prod
@@ -1130,7 +1130,7 @@ func rollback(command *bot.Cmd) (msg string, err error) {
 					f_info := fmt.Sprintf(pathInfo, dir_parent, f.Name(), f.Name(), env)
 					lFile := []string{f_yaml, f_script, f_info}
 					
-					check = check_lock_v2(dir_parent + f.Name())
+					check = check_lock_v2(dir_parent + f.Name() + "/")
 					proname = f.Name()
 					if check {
 						proname += " [locked]"
@@ -1209,9 +1209,9 @@ func rollback(command *bot.Cmd) (msg string, err error) {
 			}
 		
 			// Make lock
-			make_lock(dir_parent)
+			make_lock(dir_parent + proname + "/")
 			// Unlock after complete function
-			defer un_lock(dir_parent)
+			defer un_lock(dir_parent + proname + "/")
 
 			// Version: default - latest
                         // This version support only production|prod
