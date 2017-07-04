@@ -2,11 +2,8 @@ package main
 
 import (
         "errors"
-        "fmt"
         "os"
         "strings"
-        "io/ioutil"
-        "time"
 )
 
 const (
